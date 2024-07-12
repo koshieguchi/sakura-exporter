@@ -18,10 +18,18 @@ var (
         },
         []string{"device", "port"},
     )
+    portXmitPackets = prometheus.NewGaugeVec(
+        prometheus.GaugeOpts{
+            Name: "infiniband_port_transmit_packets_total",
+            Help: "Total number of transmitted packets on InfiniBand port",
+        },
+        []string{"device", "port"},
+    )
 )
 
 func init() {
     prometheus.MustRegister(portRcvPackets)
+    prometheus.MustRegister(portXmitPackets)
 }
 
 func collectInfiniBandMetrics() {
@@ -41,6 +49,9 @@ func collectInfiniBandMetrics() {
         for portNum, port := range device.Ports {
             if port.Counters.PortRcvPackets != nil {
                 portRcvPackets.WithLabelValues(deviceName, fmt.Sprintf("%d", portNum)).Set(float64(*port.Counters.PortRcvPackets))
+            }
+            if port.Counters.PortXmitPackets != nil {
+                portXmitPackets.WithLabelValues(deviceName, fmt.Sprintf("%d", portNum)).Set(float64(*port.Counters.PortXmitPackets))
             }
         }
     }
