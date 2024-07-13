@@ -1,10 +1,10 @@
 package main
 
 import (
-    "fmt"
-    "log"
+	"fmt"
+	"log"
 
-    "github.com/prometheus/procfs/sysfs"
+	"github.com/prometheus/procfs/sysfs"
 )
 
 func main() {
@@ -20,14 +20,14 @@ func main() {
         log.Fatalf("Failed to get InfiniBand class: %v", err)
     }
 
-    // 各デバイスとポートのport_rcv_packetsを表示
+    // 各デバイスとポートのport_rcv_dataを表示
     for deviceName, device := range ibClass {
         for portNum, port := range device.Ports {
-            if port.Counters.PortRcvPackets != nil {
-                fmt.Printf("Device: %s, Port: %d, Port Receive Packets: %d\n",
-                           deviceName, portNum, *port.Counters.PortRcvPackets)
+            if port.Counters.PortRcvData != nil {
+                fmt.Printf("Device: %s, Port: %d, Port Receive dataPortRcvData: %d\n",
+                           deviceName, portNum, *port.Counters.PortRcvData)
             } else {
-                fmt.Printf("Device: %s, Port: %d, Port Receive Packets: Not available\n",
+                fmt.Printf("Device: %s, Port: %d, Port Receive dataPortRcvData: Not available\n",
                            deviceName, portNum)
             }
         }

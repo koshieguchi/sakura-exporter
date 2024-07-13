@@ -1,35 +1,35 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/http"
+	"fmt"
+	"log"
+	"net/http"
 
-    "github.com/prometheus/client_golang/prometheus"
-    "github.com/prometheus/client_golang/prometheus/promhttp"
-    "github.com/prometheus/procfs/sysfs"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/procfs/sysfs"
 )
 
 var (
-    portRcvPackets = prometheus.NewGaugeVec(
+    portRcvData = prometheus.NewGaugeVec(
         prometheus.GaugeOpts{
-            Name: "infiniband_port_receive_packets_total",
-            Help: "Total number of received packets on InfiniBand port",
+            Name: "infiniband_port_receive_data_total",
+            Help: "Total number of received data on InfiniBand port",
         },
         []string{"device", "port"},
     )
-    portXmitPackets = prometheus.NewGaugeVec(
+    portXmitData = prometheus.NewGaugeVec(
         prometheus.GaugeOpts{
-            Name: "infiniband_port_transmit_packets_total",
-            Help: "Total number of transmitted packets on InfiniBand port",
+            Name: "infiniband_port_transmit_data_total",
+            Help: "Total number of transmitted data on InfiniBand port",
         },
         []string{"device", "port"},
     )
 )
 
 func init() {
-    prometheus.MustRegister(portRcvPackets)
-    prometheus.MustRegister(portXmitPackets)
+    prometheus.MustRegister(portRcvData)
+    prometheus.MustRegister(portXmitData)
 }
 
 func collectInfiniBandMetrics() {
@@ -47,11 +47,11 @@ func collectInfiniBandMetrics() {
 
     for deviceName, device := range ibClass {
         for portNum, port := range device.Ports {
-            if port.Counters.PortRcvPackets != nil {
-                portRcvPackets.WithLabelValues(deviceName, fmt.Sprintf("%d", portNum)).Set(float64(*port.Counters.PortRcvPackets))
+            if port.Counters.PortRcvData != nil {
+                portRcvData.WithLabelValues(deviceName, fmt.Sprintf("%d", portNum)).Set(float64(*port.Counters.PortRcvData))
             }
-            if port.Counters.PortXmitPackets != nil {
-                portXmitPackets.WithLabelValues(deviceName, fmt.Sprintf("%d", portNum)).Set(float64(*port.Counters.PortXmitPackets))
+            if port.Counters.PortXmitData != nil {
+                portXmitData.WithLabelValues(deviceName, fmt.Sprintf("%d", portNum)).Set(float64(*port.Counters.PortXmitData))
             }
         }
     }
