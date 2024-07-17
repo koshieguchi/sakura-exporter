@@ -1,9 +1,3 @@
-- prometheus/client_golang ライブラリを使用しています。
-- portRcvPackets という GaugeVec メトリクスを定義しています。これは、デバイス名とポート番号をラベルとして持ちます。
-- collectInfiniBandMetrics 関数で、InfiniBand の情報を収集し、メトリクスを更新しています。
-- メインの http.HandleFunc で /metrics エンドポイントを設定し、リクエストがあるたびに collectInfiniBandMetrics を呼び出してから、Prometheus のメトリクスハンドラを使用してレスポンスを返しています。
-- サーバーは 9401 ポートでリッスンします。
-
 ## Install
 
 ```bash
@@ -22,6 +16,7 @@ go mod tidy
 ```
 
 ## Output
+
 ```sh
 $ curl localhost:9401/metrics
 # HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
