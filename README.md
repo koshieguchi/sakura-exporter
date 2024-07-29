@@ -1,7 +1,7 @@
 ## Install
 
 ```bash
-go mod init sakura-exporter
+go mod init github.com/koshieguchi/sakura-exporter
 
 go get github.com/prometheus/procfs
 
