@@ -15,6 +15,11 @@ go get github.com/...
 go mod tidy
 ```
 
+```bash
+# initialization
+go mod init github.com/koshieguchi/sakura-exporter
+```
+
 ## Output
 
 ```sh
