@@ -256,3 +256,34 @@ go_rules_dependencies()
 go_register_toolchains(version = "1.20.5")
 
 gazelle_dependencies(go_repository_default_config = "//:WORKSPACE.bazel")
+
+############################################################
+# Bazel rule for pcm
+############################################################
+
+# workspace(name = "rules_foreign_cc_usage_example")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# Group the sources of the library so that CMake rule have access to it
+all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
+
+# Rule repository
+http_archive(
+   name = "rules_foreign_cc",
+   strip_prefix = "rules_foreign_cc-main",
+   url = "https://github.com/bazelbuild/rules_foreign_cc/archive/main.zip",
+)
+
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+
+# Workspace initialization function; includes repositories needed by rules_foreign_cc,
+# and creates some utilities for the host operating system
+rules_foreign_cc_dependencies()
+
+http_archive(
+   name = "pcm",
+   build_file_content = all_content,
+   strip_prefix = "pcm-202405",
+   urls = ["https://github.com/intel/pcm/archive/refs/tags/202405.tar.gz"],
+)

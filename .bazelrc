@@ -1,0 +1,3 @@
+build:debug -c dbg
+build:debug --copt="-g"
+build:debug --strip="never"
