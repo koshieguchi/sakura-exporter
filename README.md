@@ -1,5 +1,7 @@
 ## Install
 
+**This repository can be built only on linux environment.**
+
 ```bash
 go mod init github.com/koshieguchi/sakura-exporter/infiniband
 
@@ -23,7 +25,7 @@ go mod tidy
 
 ```bash
 # initialization
-go mod init github.com/koshieguchi/sakura-exporter
+go mod init github.com/koshieguchi/sakura-exporter/infiniband
 ```
 
 ## Output
