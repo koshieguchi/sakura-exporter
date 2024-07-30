@@ -1,11 +1,17 @@
 ## Install
 
 ```bash
-go mod init github.com/koshieguchi/sakura-exporter
+go mod init github.com/koshieguchi/sakura-exporter/infiniband
 
 go get github.com/prometheus/procfs
 
 go build -o sakura-exporter main.go
+
+# Update WORKSPACE file based on go.mod
+bazel run //:gazelle -- update-repos -from_file=infiniband/go.mod
+
+# Generate BUILD files automatically
+bazel run //:gazelle
 ```
 
 新たにモジュールを追加した場合は、以下のコマンドを実行してください。

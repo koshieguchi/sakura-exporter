@@ -16,3 +16,8 @@
 #     hdrs = glob(["build/include/*.h"]),
 #     includes = ["build/include"],
 # )
+
+load("@bazel_gazelle//:def.bzl", "gazelle")
+
+# gazelle:prefix github.com/koshieguchi/sakura-exporter
+gazelle(name = "gazelle")

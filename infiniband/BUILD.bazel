@@ -1,15 +1,9 @@
 load("@io_bazel_rules_go//go:def.bzl", "go_binary", "go_library")
-load("@bazel_gazelle//:def.bzl", "gazelle")
-
-# Gazelle directive to update BUILD files automatically
-# gazelle:prefix github.com/koshieguchi/sakura-exporter
-
-gazelle(name = "gazelle")
 
 go_library(
-    name = "sakura-exporter_lib",
+    name = "infiniband_lib",
     srcs = ["infiniband-exporter.go"],
-    importpath = "github.com/koshieguchi/sakura-exporter",
+    importpath = "github.com/koshieguchi/sakura-exporter/infiniband",
     visibility = ["//visibility:private"],
     deps = [
         "@com_github_prometheus_client_golang//prometheus",
@@ -19,8 +13,7 @@ go_library(
 )
 
 go_binary(
-    name = "infiniband-exporter",
-    embed = [":sakura-exporter_lib"],
-    out = "infiniband-exporter.out",
+    name = "infiniband",
+    embed = [":infiniband_lib"],
     visibility = ["//visibility:public"],
 )
