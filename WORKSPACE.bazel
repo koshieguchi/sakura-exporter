@@ -266,7 +266,7 @@ gazelle_dependencies(go_repository_default_config = "//:WORKSPACE.bazel")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Group the sources of the library so that CMake rule have access to it
-all_content = """filegroup(name = "all", srcs = glob(["**"]), visibility = ["//visibility:public"])"""
+# all_content = """filegroup(name = "all", srcs = glob(["src/**"]), visibility = ["//visibility:public"])"""
 
 # Rule repository
 http_archive(
@@ -281,9 +281,12 @@ load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_depende
 # and creates some utilities for the host operating system
 rules_foreign_cc_dependencies()
 
-http_archive(
-   name = "pcm",
-   build_file_content = all_content,
-   strip_prefix = "pcm-202405",
-   urls = ["https://github.com/intel/pcm/archive/refs/tags/202405.tar.gz"],
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
+
+git_repository(
+    name = "pcm",
+    remote = "https://github.com/intel/pcm.git",
+    commit = "e9a1f396fc0d57308d7e2d661dbcfd2681f44a86", # git show-ref -s refs/tags/202405
+    recursive_init_submodules = True,
+    build_file = "//third_party:pcm.BUILD",
 )
