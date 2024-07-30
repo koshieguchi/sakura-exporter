@@ -1,36 +1,28 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-# load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# Rule repository, note that it's recommended to use a pinned commit to a released version of the rules
 http_archive(
-   name = "rules_foreign_cc",
-   sha256 = "c2cdcf55ffaf49366725639e45dedd449b8c3fe22b54e31625eb80ce3a240f1e",
-   strip_prefix = "rules_foreign_cc-0.1.0",
-   url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.1.0.zip",
+    name = "io_bazel_rules_go",
+    sha256 = "6dc2da7ab4cf5d4011ad2771b1bb3ef76e28e3e070012c95d16f120b84ba226e",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
+        "https://github.com/bazelbuild/rules_go/releases/download/v0.39.1/rules_go-v0.39.1.zip",
+    ],
 )
 
-load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
-
-# This sets up some common toolchains for building targets. For more details, please see
-# https://github.com/bazelbuild/rules_foreign_cc/tree/main/docs#rules_foreign_cc_dependencies
-rules_foreign_cc_dependencies()
-
-
-_ALL_CONTENT = """\
-filegroup(
-    name = "all_srcs",
-    srcs = glob(["**"]),
-    visibility = ["//visibility:public"],
+http_archive(
+    name = "bazel_gazelle",
+    sha256 = "727f3e4edd96ea20c29e8c2ca9e8d2af724d8c7778e7923a854b2c80952bc405",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-gazelle/releases/download/v0.30.0/bazel-gazelle-v0.30.0.tar.gz",
+        "https://github.com/bazelbuild/bazel-gazelle/releases/download/v0.30.0/bazel-gazelle-v0.30.0.tar.gz",
+    ],
 )
-"""
 
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "new_git_repository")
+load("@io_bazel_rules_go//go:deps.bzl", "go_register_toolchains", "go_rules_dependencies")
+load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
+go_rules_dependencies()
 
-new_git_repository(
-    name = "intel_pcm",
-    remote = "https://github.com/intel/pcm.git",
-    tag = "202405",
-    # build_file = "//third_party:intel_pcm.BUILD",
-    build_file_content = _ALL_CONTENT,
-)
+go_register_toolchains(version = "1.21.11")
+
+gazelle_dependencies()
