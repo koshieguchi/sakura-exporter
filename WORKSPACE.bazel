@@ -272,8 +272,15 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 http_archive(
    name = "rules_foreign_cc",
    strip_prefix = "rules_foreign_cc-main",
+   integrity = "sha256-Lg30+tuVnqVjnQ3c+uHg2rOoLES+J3ZxUxkZFjTeCzI=",
    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/main.zip",
 )
+# http_archive(
+#     name = "rules_foreign_cc",
+#     sha256 = "33a5690733c5cc2ede39cb62ebf89e751f2448e27f20c8b2fbbc7d136b166804",
+#     strip_prefix = "rules_foreign_cc-0.5.1",
+#     urls = ["https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.5.1.tar.gz"],
+# )
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 
@@ -287,6 +294,7 @@ git_repository(
     name = "pcm",
     remote = "https://github.com/intel/pcm.git",
     commit = "e9a1f396fc0d57308d7e2d661dbcfd2681f44a86", # git show-ref -s refs/tags/202405
-    recursive_init_submodules = True,
+    # recursive_init_submodules = True,
+    init_submodules = True,
     build_file = "//third_party:pcm.BUILD",
 )

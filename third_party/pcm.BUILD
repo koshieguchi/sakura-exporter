@@ -1,11 +1,7 @@
 # BUILD for pcm-exporter
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
-
-filegroup(
-    name = "srcs",
-    srcs = glob(["src/**"]),
-    visibility = ["//visibility:public"],
-)
+# load("@rules_foreign_cc//tools/build_defs:cmake.bzl", "cmake_external")
+# load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake")
 
 filegroup(
     name = "all",
@@ -13,30 +9,78 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-cmake(
+# LINUX_ONLY_BINARIES = select({
+#     ":linux": ["pcm-daemon", "pcm-client"],
+#     "//conditions:default": [],
+# })
+
+cmake_external(
     name = "pcm_with_cmake",
-    # Values to be passed as -Dkey=value on the CMake command line;
-    # here are serving to provide some CMake script configuration options
-    #  cache_entries = {
-    #      "NOFORTRAN": "on",
-    #      "BUILD_WITHOUT_LAPACK": "no",
-    #  },
-    # lib_source = "//:srcs",
     lib_source = "@pcm//:all",
-    # working_directory = "src",
-    # We are selecting the resulting static library to be passed in C/C++ provider
-    # as the result of the build;
-    # However, the cmake_external dependants could use other artifacts provided by the build,
-    # according to their CMake script
-    # cmake_options = [
-    #     "-DBUILD_SHARED_LIBS=OFF",  # 静的ライブラリのみをビルド
-    # ],
-    # build_args = [
-    #     "-DBUILD_SHARED_LIBS=OFF",
-    # ],
     out_static_libs = ["libpcm.a"],
-    targets = ["PCM_STATIC"],
+    # out_include_dir = "include",
+    # out_lib_dir="src",
+    cache_entries = {
+        "CMAKE_BUILD_TYPE": "Release",
+    },
+    out_shared_libs = ["libpcm.so"],
+    out_binaries = [
+        "pcm",
+        "pcm-numa",
+        "pcm-latency",
+        "pcm-power",
+        "pcm-msr",
+        "pcm-memory",
+        "pcm-tsx",
+        "pcm-pcie",
+        "pcm-core",
+        "pcm-iio",
+        "pcm-lspci",
+        "pcm-pcicfg",
+        "pcm-mmio",
+        "pcm-tpmi",
+        "pcm-raw",
+        "pcm-accel",
+        "pcm-sensor-server",
+        "pcm-sensor",
+    ] + ["pcm-daemon", "pcm-client"],
+    # out_shared_libs = ["libpcm.so"],
+    # out_binaries= ["pcm"],
+    # targets = [
+    #     "PCM_STATIC",
+    #     # "PCM_SHARED",
+    #     # "PROJECT_NAMES"
+    # ],
+    targets = [
+        "PCM_STATIC",
+        "PCM_SHARED",
+    ] + [
+        "pcm",
+        "pcm-numa",
+        "pcm-latency",
+        "pcm-power",
+        "pcm-msr",
+        "pcm-memory",
+        "pcm-tsx",
+        "pcm-pcie",
+        "pcm-core",
+        "pcm-iio",
+        "pcm-lspci",
+        "pcm-pcicfg",
+        "pcm-mmio",
+        "pcm-tpmi",
+        "pcm-raw",
+        "pcm-accel",
+        "pcm-sensor-server",
+        "pcm-sensor",
+    ] +["daemon", "client"],
     visibility = ["//visibility:public"],
+    build_args = [
+        "-j", "16",
+         "--verbose",
+    ],
+    install=False,
+    # alwayslink=True,
 )
 
 
