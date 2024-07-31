@@ -270,22 +270,24 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 # Rule repository
 http_archive(
-   name = "rules_foreign_cc",
-   strip_prefix = "rules_foreign_cc-main",
-   integrity = "sha256-Lg30+tuVnqVjnQ3c+uHg2rOoLES+J3ZxUxkZFjTeCzI=",
-   url = "https://github.com/bazelbuild/rules_foreign_cc/archive/main.zip",
+    name = "rules_foreign_cc",
+    # TODO: Get the latest sha256 value from a bazel debug message or the latest
+    #       release on the releases page: https://github.com/bazelbuild/rules_foreign_cc/releases
+    #
+    # sha256 = "...",
+    integrity = "sha256-Kk0HzWSwcZs5p8EiGKPlB2crgql7mMaonThWWJTPfFE=",
+    strip_prefix = "rules_foreign_cc-0.9.0",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/0.9.0.tar.gz",
 )
 # http_archive(
-#     name = "rules_foreign_cc",
-#     sha256 = "33a5690733c5cc2ede39cb62ebf89e751f2448e27f20c8b2fbbc7d136b166804",
-#     strip_prefix = "rules_foreign_cc-0.5.1",
-#     urls = ["https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.5.1.tar.gz"],
+#    name = "rules_foreign_cc",
+#    strip_prefix = "rules_foreign_cc-main",
+#    integrity = "sha256-Lg30+tuVnqVjnQ3c+uHg2rOoLES+J3ZxUxkZFjTeCzI=",
+#    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/main.zip",
 # )
 
 load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
 
-# Workspace initialization function; includes repositories needed by rules_foreign_cc,
-# and creates some utilities for the host operating system
 rules_foreign_cc_dependencies()
 
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")

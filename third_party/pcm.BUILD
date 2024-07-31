@@ -9,20 +9,22 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
-# LINUX_ONLY_BINARIES = select({
-#     ":linux": ["pcm-daemon", "pcm-client"],
-#     "//conditions:default": [],
-# })
-
-cmake_external(
+cmake(
     name = "pcm_with_cmake",
     lib_source = "@pcm//:all",
-    out_static_libs = ["libpcm.a"],
-    # out_include_dir = "include",
-    # out_lib_dir="src",
+    out_include_dir = "include",
+    out_lib_dir="lib",
     cache_entries = {
+        "CMAKE_C_FLAGS": "-fPIC",
+        "CMAKE_INSTALL_PREFIX": "$INSTALLDIR",
+        "CMAKE_INSTALL_SBINDIR": "$INSTALLDIR/bin",
+        "CMAKE_INSTALL_LIBDIR": "$INSTALLDIR/lib",
+        "CMAKE_LIBRARY_OUTPUT_DIRECTORY": "$INSTALLDIR/lib",
+    },
+    env = {
         "CMAKE_BUILD_TYPE": "Release",
     },
+    out_static_libs = ["libpcm.a"],
     out_shared_libs = ["libpcm.so"],
     out_binaries = [
         "pcm",
@@ -44,13 +46,6 @@ cmake_external(
         "pcm-sensor-server",
         "pcm-sensor",
     ] + ["pcm-daemon", "pcm-client"],
-    # out_shared_libs = ["libpcm.so"],
-    # out_binaries= ["pcm"],
-    # targets = [
-    #     "PCM_STATIC",
-    #     # "PCM_SHARED",
-    #     # "PROJECT_NAMES"
-    # ],
     targets = [
         "PCM_STATIC",
         "PCM_SHARED",
@@ -76,10 +71,10 @@ cmake_external(
     ] +["daemon", "client"],
     visibility = ["//visibility:public"],
     build_args = [
-        "-j", "16",
+        "-j16",
          "--verbose",
     ],
-    install=False,
+    install=True,
     # alwayslink=True,
 )
 
