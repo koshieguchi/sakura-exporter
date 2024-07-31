@@ -1,10 +1,11 @@
 cc_binary(
     name = "print_pcm_env",
     srcs = ["print_pcm_env.cpp"],
-    copts = ["-fsanitize=address", "-g", "-Iexternal/pcm/src"],
+    copts = ["-fsanitize=address", "-g", "-Iexternal/pcm/pcm_with_cmake/src"],
     linkopts = [
         "-fsanitize=address",
-        "-L$(locations //:pcm_with_cmake) -lpcm"
+        "-Lexternal/pcm/pcm_with_cmake/lib",
+        "-lpcm"
     ],
-    deps = ["//third_party:pcm_with_cmake"],
+    deps = ["@pcm//:pcm_with_cmake"],
 )

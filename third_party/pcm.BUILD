@@ -13,19 +13,17 @@ cmake(
     name = "pcm_with_cmake",
     lib_source = "@pcm//:all",
     out_include_dir = "include",
-    out_lib_dir="lib",
+    # out_lib_dir="lib",
     cache_entries = {
         "CMAKE_C_FLAGS": "-fPIC",
+        "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_INSTALL_PREFIX": "$INSTALLDIR",
         "CMAKE_INSTALL_SBINDIR": "$INSTALLDIR/bin",
         "CMAKE_INSTALL_LIBDIR": "$INSTALLDIR/lib",
         "CMAKE_LIBRARY_OUTPUT_DIRECTORY": "$INSTALLDIR/lib",
     },
-    env = {
-        "CMAKE_BUILD_TYPE": "Release",
-    },
-    out_static_libs = ["libpcm.a"],
-    out_shared_libs = ["libpcm.so"],
+    # out_static_libs = ["libpcm.a"],
+    # out_shared_libs = ["libpcm.so"],
     out_binaries = [
         "pcm",
         "pcm-numa",
@@ -75,7 +73,4 @@ cmake(
          "--verbose",
     ],
     install=True,
-    # alwayslink=True,
 )
-
-

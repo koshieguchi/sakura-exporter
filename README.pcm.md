@@ -8,3 +8,4 @@ sudo env LD_LIBRARY_PATH=/home/koshieguchi/pcm/build/lib:$LD_LIBRARY_PATH ./prin
 
 pcm
 `/home/mdxuser/.cache/bazel/_bazel_mdxuser/429e3924ade3921e08597fad00a99977/sandbox/linux-sandbox/4/execroot/_main/bazel-out/k8-fastbuild/bin/external/pcm/pcm_with_cmake.build_tmpdir`
+`~/.cache/bazel/_bazel_mdxuser/429e3924ade3921e08597fad00a99977/sandbox/linux-sandbox`

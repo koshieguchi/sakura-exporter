@@ -24,6 +24,11 @@ go get github.com/...
 go mod tidy
 ```
 
+debug
+```bash
+bazel info
+```
+
 ## Output
 
 ```sh
