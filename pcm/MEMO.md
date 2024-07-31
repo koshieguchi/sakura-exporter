@@ -11,3 +11,11 @@
 3. bazelを使わずにCMakeまたはMakeを自力で書いて、bildする（一番現実的、楽ではある）
 
 今回のlibraryのbuild errorはpcm側の問題なので、bazel側で解決するのが難しい、、
+
+# 外部リポジトリとして、pcmを使ってinstallする場合
+
+```bash
+1. clone pcm
+2. build pcm
+3. ディレクトリ内にMakeファイルなどを作成して、pcmのlibpcm.aをincludeするようにする
+```
