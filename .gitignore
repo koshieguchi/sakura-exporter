@@ -4,3 +4,4 @@
 /bazel-*
 
 pcm/pcm/
+pcm/prometheus-cpp/
