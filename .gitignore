@@ -2,3 +2,5 @@
 
 # Bazel specific
 /bazel-*
+
+pcm/pcm/
