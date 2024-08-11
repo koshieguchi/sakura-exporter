@@ -2,3 +2,4 @@
 
 rm -rf prometheus-cpp
 rm -rf pcm
+rm -rf *.out
