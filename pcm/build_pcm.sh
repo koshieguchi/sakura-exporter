@@ -1,6 +1,7 @@
 #!/bin/bash -eux
 
 # fetch third-party dependencies
+# Install prometheus-cpp
 rm -rf prometheus-cpp
 git clone https://github.com/jupp0r/prometheus-cpp.git
 cd prometheus-cpp
@@ -10,20 +11,14 @@ git submodule update
 mkdir _build
 cd _build
 
-# run cmake
-cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF
-
-# build
-cmake --build . --parallel $(nproc)
-
-# run tests
-ctest -V
-
-# install the libraries and headers
-cmake --install .
+cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF # run cmake
+cmake --build . --parallel $(nproc) # build
+ctest -V # run tests
+cmake --install . # install the libraries and headers
 
 cd ../../
 
+# Install pcm
 rm -rf pcm
 git clone https://github.com/intel/pcm.git
 cd pcm
