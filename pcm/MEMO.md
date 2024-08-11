@@ -19,3 +19,11 @@
 2. build pcm
 3. ディレクトリ内にMakeファイルなどを作成して、pcmのlibpcm.aをincludeするようにする
 ```
+
+## CPU architecture
+- x1: Detected Intel(R) Xeon(R) Gold 6130 CPU @ 2.10GHz "Intel(r) microarchitecture codename Skylake-SP" stepping 4 microcode level 0x2007006
+  - SKX: PurleyPlatform
+- login: INTEL(R) XEON(R) PLATINUM 8580
+  - SPR: Eagle
+- gpu: Intel(R) Xeon(R) Platinum 8480+
+  - SPR: Eagle

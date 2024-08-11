@@ -20,25 +20,6 @@ using namespace std;
 using namespace pcm;
 #define NUM_SAMPLES (1)
 
-static void print(const vector<string> &listNames, bool csv)
-{
-  for (auto &name : listNames)
-    if (csv)
-      cout << "," << name;
-    else
-      cout << "|  " << name << "  ";
-}
-
-static uint getIdent(const string &s)
-{
-  /*
-   * We are adding "|  " before and "  " after the event name hence +5 to
-   * strlen(eventNames). Rest of the logic is to center the event name.
-   */
-  uint ident = 5 + (uint)s.size();
-  return (3 + ident / 2);
-}
-
 class IPlatform
 {
   void init();
@@ -46,9 +27,6 @@ class IPlatform
 public:
   IPlatform(PCM *m, bool csv, bool bandwidth, bool verbose);
   virtual void getEvents() = 0;
-  virtual void printHeader() = 0;
-  virtual void printEvents() = 0;
-  virtual void printAggregatedEvents() = 0;
   virtual void cleanup() = 0;
   virtual uint64 getReadBw() = 0;
   virtual uint64 getWriteBw() = 0;
@@ -116,19 +94,11 @@ class LegacyPlatform : public IPlatform
   array<eventCount_t, total> eventCount;
 
   virtual void getEvents() final;
-  virtual void printHeader() final;
-  virtual void printEvents() final;
-  virtual void printAggregatedEvents() final;
   virtual void cleanup() final;
 
-  void printBandwidth(uint socket, eventFilter filter);
-  void printBandwidth();
-  void printSocketScopeEvent(uint socket, eventFilter filter, uint idx);
-  void printSocketScopeEvents(uint socket, eventFilter filter);
   uint64 getEventCount(uint socket, uint idx);
   uint eventGroupOffset(eventGroup_t &eventGroup);
   void getEventGroup(eventGroup_t &eventGroup);
-  void printAggregatedEvent(uint idx);
 
 public:
   LegacyPlatform(initializer_list<string> events, initializer_list<eventGroup_t> eventCodes,
@@ -158,10 +128,6 @@ public:
 
 protected:
   vector<vector<uint64>> eventSample;
-  virtual uint64 getReadBw(uint socket, eventFilter filter) = 0;
-  virtual uint64 getWriteBw(uint socket, eventFilter filter) = 0;
-  // virtual uint64 getReadBw() = 0;
-  // virtual uint64 getWriteBw() = 0;
   virtual uint64 event(uint socket, eventFilter filter, uint idx) = 0;
 };
 
@@ -213,154 +179,7 @@ void LegacyPlatform::getEvents()
     getEventGroup(evGroup);
 }
 
-void LegacyPlatform::printHeader()
-{
-  cout << "Skt";
-  if (!m_csv)
-    cout << ' ';
-
-  print(eventNames, m_csv);
-  if (m_bandwidth)
-    print(bwNames, m_csv);
-
-  cout << "\n";
-}
-
-void LegacyPlatform::printBandwidth(uint skt, eventFilter filter)
-{
-  typedef uint64 (LegacyPlatform::*bwFunc_t)(uint, eventFilter);
-  vector<bwFunc_t> bwFunc = {
-      &LegacyPlatform::getReadBw,
-      &LegacyPlatform::getWriteBw,
-  };
-
-  if (!m_csv)
-    for (auto &bw_f : bwFunc)
-    {
-      int ident = getIdent(bwNames[&bw_f - bwFunc.data()]);
-      cout << setw(ident)
-           << unit_format((this->*bw_f)(skt, filter))
-           << setw(5 + bwNames[&bw_f - bwFunc.data()].size() - ident)
-           << ' ';
-    }
-  else
-    for (auto &bw_f : bwFunc)
-      cout << ',' << (this->*bw_f)(skt, filter);
-}
-
-void LegacyPlatform::printSocketScopeEvent(uint skt, eventFilter filter, uint idx)
-{
-  uint64 value = event(skt, filter, idx);
-
-  if (m_csv)
-    cout << ',' << value;
-  else
-  {
-    int ident = getIdent(eventNames[idx]);
-    cout << setw(ident)
-         << unit_format(value)
-         << setw(5 + eventNames[idx].size() - ident)
-         << ' ';
-  }
-}
-
-void LegacyPlatform::printSocketScopeEvents(uint skt, eventFilter filter)
-{
-  if (!m_csv)
-  {
-    int ident = (int)strlen("Skt |") / 2;
-    cout << setw(ident) << skt << setw(ident) << ' ';
-  }
-  else
-    cout << skt;
-
-  for (uint idx = 0; idx < eventNames.size(); ++idx)
-    printSocketScopeEvent(skt, filter, idx);
-
-  if (m_bandwidth)
-    printBandwidth(skt, filter);
-
-  if (m_verbose)
-    cout << filterNames[filter];
-
-  cout << "\n";
-}
-
-void LegacyPlatform::printEvents()
-{
-  for (uint skt = 0; skt < m_socketCount; ++skt)
-    if (!m_verbose)
-      printSocketScopeEvents(skt, TOTAL);
-    else
-      for (uint flt = TOTAL; flt < fltLast; ++flt)
-        printSocketScopeEvents(skt, static_cast<eventFilter>(flt));
-}
-
-void LegacyPlatform::printAggregatedEvent(uint idx)
-{
-  uint64 value = 0;
-  for (uint skt = 0; skt < m_socketCount; ++skt)
-    value += event(skt, TOTAL, idx);
-
-  int ident = getIdent(eventNames[idx]);
-  cout << setw(ident)
-       << unit_format(value)
-       << setw(5 + eventNames[idx].size() - ident) << ' ';
-}
-
-void LegacyPlatform::printBandwidth()
-{
-  typedef uint64 (LegacyPlatform::*bwFunc_t)();
-  vector<bwFunc_t> bwFunc = {
-      &LegacyPlatform::getReadBw,
-      &LegacyPlatform::getWriteBw,
-  };
-
-  for (auto &bw_f : bwFunc)
-  {
-    int ident = getIdent(bwNames[&bw_f - bwFunc.data()]);
-    cout << setw(ident)
-         << unit_format((this->*bw_f)())
-         << setw(5 + bwNames[&bw_f - bwFunc.data()].size() - ident)
-         << ' ';
-  }
-}
-
-void LegacyPlatform::printAggregatedEvents()
-{
-  if (!m_csv)
-  {
-    uint len = (uint)strlen("Skt ");
-
-    for (auto &evt : eventNames)
-      len += (5 + (uint)evt.size());
-
-    if (m_bandwidth)
-      for (auto &bw : bwNames)
-        len += (5 + (uint)bw.size());
-
-    while (len--)
-      cout << '-';
-    cout << "\n";
-
-    int ident = (int)strlen("Skt |") / 2;
-    cout << setw(ident) << "*" << setw(ident) << ' ';
-
-    for (uint idx = 0; idx < eventNames.size(); ++idx)
-      printAggregatedEvent(idx);
-
-    if (m_bandwidth)
-      printBandwidth();
-
-    if (m_verbose)
-      cout << "(Aggregate)\n\n";
-    else
-      cout << "\n\n";
-  }
-}
-
 // BHS
-
 class BirchStreamPlatform : public LegacyPlatform
 {
 public:
@@ -404,11 +223,6 @@ private:
     WCiLF_miss,
     eventLast
   };
-
-  virtual uint64 getReadBw(uint socket, eventFilter filter);
-  virtual uint64 getWriteBw(uint socket, eventFilter filter);
-  // virtual uint64 getReadBw();
-  // virtual uint64 getWriteBw();
   virtual uint64 event(uint socket, eventFilter filter, uint idx);
 };
 
@@ -466,18 +280,6 @@ uint64 BirchStreamPlatform::event(uint socket, eventFilter filter, uint idx)
   return event;
 }
 
-uint64 BirchStreamPlatform::getReadBw(uint socket, eventFilter filter)
-{
-  uint64 readBw = event(socket, filter, PCIRdCur);
-  return (readBw * 64ULL);
-}
-
-uint64 BirchStreamPlatform::getWriteBw(uint socket, eventFilter filter)
-{
-  uint64 writeBw = event(socket, filter, ItoM) +
-                   event(socket, filter, ItoMCacheNear);
-  return (writeBw * 64ULL);
-}
 uint64 BirchStreamPlatform::getReadBw()
 {
   uint64 readBw = 0;
@@ -540,11 +342,6 @@ private:
     WCiLF_miss,
     eventLast
   };
-
-  virtual uint64 getReadBw(uint socket, eventFilter filter);
-  virtual uint64 getWriteBw(uint socket, eventFilter filter);
-  // virtual uint64 getReadBw();
-  // virtual uint64 getWriteBw();
   virtual uint64 event(uint socket, eventFilter filter, uint idx);
 };
 
@@ -602,18 +399,6 @@ uint64 EagleStreamPlatform::event(uint socket, eventFilter filter, uint idx)
   return event;
 }
 
-uint64 EagleStreamPlatform::getReadBw(uint socket, eventFilter filter)
-{
-  uint64 readBw = event(socket, filter, PCIRdCur);
-  return (readBw * 64ULL);
-}
-
-uint64 EagleStreamPlatform::getWriteBw(uint socket, eventFilter filter)
-{
-  uint64 writeBw = event(socket, filter, ItoM) +
-                   event(socket, filter, ItoMCacheNear);
-  return (writeBw * 64ULL);
-}
 uint64 EagleStreamPlatform::getReadBw()
 {
   uint64 readBw = 0;
@@ -668,11 +453,6 @@ private:
     WiL_miss,
     eventLast
   };
-
-  virtual uint64 getReadBw(uint socket, eventFilter filter);
-  virtual uint64 getWriteBw(uint socket, eventFilter filter);
-  // virtual uint64 getReadBw();
-  // virtual uint64 getWriteBw();
   virtual uint64 event(uint socket, eventFilter filter, uint idx);
 };
 
@@ -722,18 +502,6 @@ uint64 WhitleyPlatform::event(uint socket, eventFilter filter, uint idx)
   return event;
 }
 
-uint64 WhitleyPlatform::getReadBw(uint socket, eventFilter filter)
-{
-  uint64 readBw = event(socket, filter, PCIRdCur);
-  return (readBw * 64ULL);
-}
-
-uint64 WhitleyPlatform::getWriteBw(uint socket, eventFilter filter)
-{
-  uint64 writeBw = event(socket, filter, ItoM) +
-                   event(socket, filter, ItoMCacheNear);
-  return (writeBw * 64ULL);
-}
 uint64 WhitleyPlatform::getReadBw()
 {
   uint64 readBw = 0;
@@ -807,11 +575,6 @@ private:
     WiL_miss,
     WiL_hit,
   };
-
-  virtual uint64 getReadBw(uint socket, eventFilter filter);
-  virtual uint64 getWriteBw(uint socket, eventFilter filter);
-  // virtual uint64 getReadBw();
-  // virtual uint64 getWriteBw();
   virtual uint64 event(uint socket, eventFilter filter, uint idx);
 };
 
@@ -829,16 +592,6 @@ uint64 PurleyPlatform::event(uint socket, eventFilter filter, uint idx)
   return event;
 }
 
-uint64 PurleyPlatform::getReadBw(uint socket, eventFilter filter)
-{
-  uint64 readBw = event(socket, filter, PCIRdCur) +
-                  event(socket, filter, RFO) +
-                  event(socket, filter, CRd) +
-                  event(socket, filter, DRd);
-
-  return (readBw * 64ULL);
-}
-
 uint64 PurleyPlatform::getReadBw()
 {
   uint64 readBw = 0;
@@ -848,13 +601,6 @@ uint64 PurleyPlatform::getReadBw()
                event(socket, TOTAL, CRd) +
                event(socket, TOTAL, DRd));
   return (readBw * 64ULL);
-}
-
-uint64 PurleyPlatform::getWriteBw(uint socket, eventFilter filter)
-{
-  uint64 writeBw = event(socket, filter, RFO) +
-                   event(socket, filter, ItoM);
-  return (writeBw * 64ULL);
 }
 
 uint64 PurleyPlatform::getWriteBw()
@@ -922,11 +668,6 @@ private:
     WiL_miss,
     WiL_total,
   };
-
-  virtual uint64 getReadBw(uint socket, eventFilter filter);
-  virtual uint64 getWriteBw(uint socket, eventFilter filter);
-  // virtual uint64 getReadBw();
-  // virtual uint64 getWriteBw();
   virtual uint64 event(uint socket, eventFilter filter, uint idx);
 };
 
@@ -946,16 +687,6 @@ uint64 GrantleyPlatform::event(uint socket, eventFilter filter, uint idx)
   return event;
 }
 
-uint64 GrantleyPlatform::getReadBw(uint socket, eventFilter filter)
-{
-  uint64 readBw = event(socket, filter, PCIRdCur) +
-                  event(socket, filter, RFO) +
-                  event(socket, filter, CRd) +
-                  event(socket, filter, DRd);
-
-  return (readBw * 64ULL);
-}
-
 uint64 GrantleyPlatform::getReadBw()
 {
   uint64 readBw = 0;
@@ -965,13 +696,6 @@ uint64 GrantleyPlatform::getReadBw()
                event(socket, TOTAL, CRd) +
                event(socket, TOTAL, DRd));
   return (readBw * 64ULL);
-}
-
-uint64 GrantleyPlatform::getWriteBw(uint socket, eventFilter filter)
-{
-  uint64 writeBw = event(socket, filter, RFO) +
-                   event(socket, filter, ItoM);
-  return (writeBw * 64ULL);
 }
 
 uint64 GrantleyPlatform::getWriteBw()
@@ -1034,11 +758,6 @@ private:
     PCIeNSWrF_miss,
     PCIeNSWrF_total,
   };
-
-  virtual uint64 getReadBw(uint socket, eventFilter filter);
-  virtual uint64 getWriteBw(uint socket, eventFilter filter);
-  // virtual uint64 getReadBw();
-  // virtual uint64 getWriteBw();
   virtual uint64 event(uint socket, eventFilter filter, uint idx);
 };
 
@@ -1058,13 +777,6 @@ uint64 BromolowPlatform::event(uint socket, eventFilter filter, uint idx)
   return event;
 }
 
-uint64 BromolowPlatform::getReadBw(uint socket, eventFilter filter)
-{
-  uint64 readBw = event(socket, filter, PCIeRdCur) +
-                  event(socket, filter, PCIeNSWr);
-  return (readBw * 64ULL);
-}
-
 uint64 BromolowPlatform::getReadBw()
 {
   uint64 readBw = 0;
@@ -1072,15 +784,6 @@ uint64 BromolowPlatform::getReadBw()
     readBw += (event(socket, TOTAL, PCIeRdCur) +
                event(socket, TOTAL, PCIeNSWr));
   return (readBw * 64ULL);
-}
-
-uint64 BromolowPlatform::getWriteBw(uint socket, eventFilter filter)
-{
-  uint64 writeBw = event(socket, filter, PCIeWiLF) +
-                   event(socket, filter, PCIeItoM) +
-                   event(socket, filter, PCIeNSWr) +
-                   event(socket, filter, PCIeNSWrF);
-  return (writeBw * 64ULL);
 }
 
 uint64 BromolowPlatform::getWriteBw()
