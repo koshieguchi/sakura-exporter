@@ -20,7 +20,7 @@
 #include <string.h>
 #include <string>
 #include <assert.h>
-#include "pcm-pcie.h"
+#include "pcm-pcie.h" // override "pcm-pcie.h" in the current directory
 
 // This is for prometheus exporter
 #include <prometheus/exposer.h>

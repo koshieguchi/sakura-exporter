@@ -1,4 +1,4 @@
-# 途中経過 2202407.31
+# Bazel 途中経過 2202407.31
 
 - pcmのbinaryをinsatllし、externalに展開することはできた
 - しかし、pcmのlibraryはCMakeLists.txtにinstallするための手順が記述されていない

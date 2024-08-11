@@ -16,13 +16,6 @@ int main()
         std::cout << "PCM programming success" << std::endl;
     }
 
-    // SystemCounterState before = getSystemCounterState();
-    // // ここに測定したいコードを挿入
-    // SystemCounterState after = getSystemCounterState();
-
-    // std::cout << "Instructions retired: "
-    //           << getInstructionsRetired(before, after) << std::endl;
-
     m->cleanup();
 
     return 0;
