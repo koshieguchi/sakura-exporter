@@ -20,7 +20,7 @@
 #include <string.h>
 #include <string>
 #include <assert.h>
-#include "pcm-pcie.h" // override "pcm-pcie.h" in the current directory
+#include "pcie-exporter.h" // override "pcm-pcie.h" in the current directory
 
 // This is for prometheus exporter
 #include <prometheus/exposer.h>
@@ -97,6 +97,9 @@ int main(int argc, char *argv[])
   unique_ptr<IPlatform> platform(IPlatform::getPlatform(m, csv, print_bandwidth,
                                                         print_additional_info, (uint)(delay * 1000)));
 
+  // Start the Prometheus exporter
+  std::cout << "\n------\n[INFO] Starting Prometheus exporter on port: 9402" << std::endl;
+
   // Monitoring loop
   while (true)
   {
@@ -109,11 +112,11 @@ int main(int argc, char *argv[])
     read_bw_gauge.Set(read_bw);
     write_bw_gauge.Set(write_bw);
 
-    if (print_bandwidth)
-    {
-      std::cout << "PCIe Read Bandwidth: " << read_bw << " B/s, ";
-      std::cout << "PCIe Write Bandwidth: " << write_bw << " B/s" << std::endl;
-    }
+    // if (print_bandwidth)
+    // {
+    //   std::cout << "PCIe Read Bandwidth: " << read_bw << " B/s, ";
+    //   std::cout << "PCIe Write Bandwidth: " << write_bw << " B/s" << std::endl;
+    // }
 
     // reset the counters
     platform->cleanup();
