@@ -44,6 +44,6 @@ g++ -fsanitize=address -g -o pcie-exporter.out pcie-exporter.cpp \
 g++ -fsanitize=address -g -o pcm-iio.out pcm-iio.cpp -I./pcm/src -L./pcm/build/lib -lpcm
 g++ -fsanitize=address -g -o iio-exporter.out iio-exporter.cpp -I./pcm/src -L./pcm/build/lib -lpcm
 
-# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:${LD_LIBRARY_PATH:-} ./print_pcm_env.out
-# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:${LD_LIBRARY_PATH:-} ./pcie-exporter.out
-# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:${LD_LIBRARY_PATH:-} ./pcm-iio.out -csv -i=1
+# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./print_pcm_env.out
+# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./pcie-exporter.out
+# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./pcm-iio.out -csv -i=1
