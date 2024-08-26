@@ -1,18 +1,5 @@
-// SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2009-2022, Intel Corporation
-// originally written by Patrick Lu
-// redesigned by Roman Sudarikov
-
-/*!     \file pcm-pcie.cpp
-  \brief Example of using uncore CBo counters: implements a performance counter monitoring utility for monitoring PCIe bandwidth
-  */
-#ifdef _MSC_VER
-#include <windows.h>
-#include "windows/windriver.h"
-#else
 #include <unistd.h>
 #include <signal.h>
-#endif
 #include <math.h>
 #include <iomanip>
 #include <stdlib.h>
@@ -20,9 +7,8 @@
 #include <string.h>
 #include <string>
 #include <assert.h>
-#include "pcie-exporter.h" // override "pcm-pcie.h" in the current directory
+#include "pcie-exporter.h"
 
-// This is for prometheus exporter
 #include <prometheus/exposer.h>
 #include <prometheus/registry.h>
 #include <prometheus/counter.h>
@@ -32,6 +18,7 @@
 
 using namespace pcm;
 
+// Factory function
 IPlatform *IPlatform::getPlatform(PCM *m, bool csv, bool print_bandwidth, bool print_additional_info, uint32 delay)
 {
   switch (m->getCPUModel())
@@ -111,12 +98,6 @@ int main(int argc, char *argv[])
     // Update Prometheus gauges
     read_bw_gauge.Set(read_bw);
     write_bw_gauge.Set(write_bw);
-
-    // if (print_bandwidth)
-    // {
-    //   std::cout << "PCIe Read Bandwidth: " << read_bw << " B/s, ";
-    //   std::cout << "PCIe Write Bandwidth: " << write_bw << " B/s" << std::endl;
-    // }
 
     // reset the counters
     platform->cleanup();
