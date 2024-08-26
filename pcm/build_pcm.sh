@@ -10,7 +10,7 @@
   mkdir -p prometheus-cpp/_build
   cd prometheus-cpp/_build
 
-  cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF # run cmake
+  cmake .. -DBUILD_SHARED_LIBS=ON -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_BUILD_TYPE=Release # run cmake
   cmake --build . --parallel $(($(nproc)/2)) # build
   ctest -V # run tests
   cmake --install . # install the libraries and headers
@@ -31,7 +31,6 @@
 # wait for both to finish
 wait
 
-rm -rf *.out
 mkdir -p ./bin
 
 g++ -fsanitize=address -g -o ./bin/pcie-exporter.out pcie-exporter.cpp \
@@ -50,8 +49,8 @@ g++ -fsanitize=address -g -o ./bin/iio-exporter.out iio-exporter.cpp \
   -lprometheus-cpp-pull \
   -lprometheus-cpp-core \
   -lz
-g++ -fsanitize=address -g -o ./bin/pcm-iio.out pcm-iio.cpp -I./pcm/src -L./pcm/build/lib -lpcm
-g++ -fsanitize=address -g -o ./bin/print_pcm_env.out print_pcm_env.cpp -I./pcm/src -L./pcm/build/lib -lpcm
+# g++ -fsanitize=address -g -o ./bin/pcm-iio.out pcm-iio.cpp -I./pcm/src -L./pcm/build/lib -lpcm
+# g++ -fsanitize=address -g -o ./bin/print_pcm_env.out print_pcm_env.cpp -I./pcm/src -L./pcm/build/lib -lpcm
 
 # sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/print_pcm_env.out
 # sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/pcie-exporter.out

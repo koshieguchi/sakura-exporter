@@ -15,6 +15,7 @@
 #include <memory>
 #include <thread>
 #include <chrono>
+#include <csignal>
 
 using namespace pcm;
 
@@ -48,14 +49,26 @@ IPlatform *IPlatform::getPlatform(PCM *m, bool csv, bool print_bandwidth, bool p
     std::cout << "Bromolow" << std::endl;
     return new BromolowPlatform(m, csv, print_bandwidth, print_additional_info, delay);
   default:
-    return NULL;
+    return nullptr;
   }
+}
+
+volatile bool keep_running = true;
+
+void signalHandler(int signum)
+{
+  std::cout << "\nInterrupt signal (" << signum << ") received. Shutting down gracefully..." << std::endl;
+  keep_running = false;
 }
 
 int main(int argc, char *argv[])
 {
   if (print_version(argc, argv))
     exit(EXIT_SUCCESS);
+
+  // Register signal handler for graceful shutdown
+  std::signal(SIGINT, signalHandler);
+  std::signal(SIGTERM, signalHandler);
 
   // Create a Prometheus exporter
   prometheus::Exposer exposer{"127.0.0.1:9402"};
@@ -81,14 +94,24 @@ int main(int argc, char *argv[])
   bool print_bandwidth = true;
   bool print_additional_info = false;
   PCM *m = PCM::getInstance();
-  unique_ptr<IPlatform> platform(IPlatform::getPlatform(m, csv, print_bandwidth,
-                                                        print_additional_info, (uint)(delay * 1000)));
+  if (!m || !m->good())
+  {
+    std::cerr << "Can't access PCM counters or failed to initialize PCM." << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  unique_ptr<IPlatform> platform(IPlatform::getPlatform(m, csv, print_bandwidth, print_additional_info, (uint)(delay * 1000)));
+  if (!platform)
+  {
+    std::cerr << "Unsupported CPU model or failed to create platform." << std::endl;
+    exit(EXIT_FAILURE);
+  }
 
   // Start the Prometheus exporter
   std::cout << "\n------\n[INFO] Starting Prometheus exporter on port: 9402" << std::endl;
 
   // Monitoring loop
-  while (true)
+  while (keep_running)
   {
     platform->getEvents();
 
@@ -99,12 +122,13 @@ int main(int argc, char *argv[])
     read_bw_gauge.Set(read_bw);
     write_bw_gauge.Set(write_bw);
 
-    // reset the counters
+    // Reset the counters
     platform->cleanup();
 
     // Wait for the specified delay (10s)
     std::this_thread::sleep_for(std::chrono::seconds(10));
   }
 
+  std::cout << "[INFO] Exporter stopped. Exiting program." << std::endl;
   exit(EXIT_SUCCESS);
 }
