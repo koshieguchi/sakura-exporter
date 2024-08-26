@@ -1,6 +1,0 @@
-# BUILD for infiniband-exporter
-
-load("@bazel_gazelle//:def.bzl", "gazelle")
-
-# gazelle:prefix github.com/koshieguchi/sakura-exporter
-gazelle(name = "gazelle")
