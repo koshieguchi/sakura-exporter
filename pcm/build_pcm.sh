@@ -32,8 +32,9 @@
 wait
 
 rm -rf *.out
-# g++ -fsanitize=address -g -o print_pcm_env.out print_pcm_env.cpp -I./pcm/src -L./pcm/build/lib -lpcm
-g++ -fsanitize=address -g -o pcie-exporter.out pcie-exporter.cpp \
+mkdir -p ./bin
+
+g++ -fsanitize=address -g -o ./bin/pcie-exporter.out pcie-exporter.cpp \
   -I. \
   -I./pcm/src \
   -L./pcm/build/lib \
@@ -41,9 +42,18 @@ g++ -fsanitize=address -g -o pcie-exporter.out pcie-exporter.cpp \
   -lprometheus-cpp-pull \
   -lprometheus-cpp-core \
   -lz
-g++ -fsanitize=address -g -o pcm-iio.out pcm-iio.cpp -I./pcm/src -L./pcm/build/lib -lpcm
-g++ -fsanitize=address -g -o iio-exporter.out iio-exporter.cpp -I./pcm/src -L./pcm/build/lib -lpcm
+g++ -fsanitize=address -g -o ./bin/iio-exporter.out iio-exporter.cpp \
+  -I. \
+  -I./pcm/src \
+  -L./pcm/build/lib \
+  -lpcm \
+  -lprometheus-cpp-pull \
+  -lprometheus-cpp-core \
+  -lz
+g++ -fsanitize=address -g -o ./bin/pcm-iio.out pcm-iio.cpp -I./pcm/src -L./pcm/build/lib -lpcm
+g++ -fsanitize=address -g -o ./bin/print_pcm_env.out print_pcm_env.cpp -I./pcm/src -L./pcm/build/lib -lpcm
 
-# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./print_pcm_env.out
-# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./pcie-exporter.out
-# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./pcm-iio.out -csv -i=1
+# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/print_pcm_env.out
+# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/pcie-exporter.out
+# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/iio-exporter.out
+# sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/pcm-iio.out -csv -i=1
