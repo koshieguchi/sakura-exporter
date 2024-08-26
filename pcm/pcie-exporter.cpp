@@ -121,8 +121,8 @@ int main(int argc, char *argv[])
     // reset the counters
     platform->cleanup();
 
-    // Wait for the specified delay (1s)
-    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // Wait for the specified delay (10s)
+    std::this_thread::sleep_for(std::chrono::seconds(10));
   }
 
   exit(EXIT_SUCCESS);
