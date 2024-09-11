@@ -1,20 +1,20 @@
 #!/bin/bash -eux
 
 # fetch third-party dependencies
-# (
-#   # Install prometheus-cpp
-#   if [ ! -d "prometheus-cpp" ]; then
-#     git clone --recursive https://github.com/jupp0r/prometheus-cpp.git --depth 1
-#   fi
+(
+  # Install prometheus-cpp
+  if [ ! -d "prometheus-cpp" ]; then
+    git clone --recursive https://github.com/jupp0r/prometheus-cpp.git --depth 1
+  fi
 
-#   mkdir -p prometheus-cpp/_build
-#   cd prometheus-cpp/_build
+  mkdir -p prometheus-cpp/_build
+  cd prometheus-cpp/_build
 
-#   cmake .. -DBUILD_SHARED_LIBS=OFF -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_BUILD_TYPE=Release # run cmake
-#   cmake --build . --parallel $(($(nproc)/2)) # build
-#   ctest -V # run tests
-#   cmake --install . # install the libraries and headers
-# ) &
+  cmake .. -DBUILD_SHARED_LIBS=OFF -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_BUILD_TYPE=Release # run cmake
+  cmake --build . --parallel $(($(nproc)/2)) # build
+  ctest -V # run tests
+  cmake --install . # install the libraries and headers
+) &
 (
   # Install pcm
   if [ ! -d "pcm" ]; then
