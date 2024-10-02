@@ -158,10 +158,6 @@ int mainThrows(int argc, char *argv[])
   mainLoop([&]()
            {
         collect_data(m, delay, iios, evt_ctx.ctrs);
-        // vector<string> display_buffer = csv ?
-        //     build_csv(iios, evt_ctx.ctrs, human_readable, show_root_port, csv_delimiter, nameMap) :
-        //     build_display(iios, evt_ctx.ctrs, pciDB, nameMap);
-        // display(display_buffer, *output);
 
         // Update the Prometheus metrics
         for (const auto &socket : iios)
