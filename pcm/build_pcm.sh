@@ -48,6 +48,13 @@ g++ -fsanitize=address -g -o ./bin/iio-exporter.out iio-exporter.cpp \
   -lprometheus-cpp-pull \
   -lprometheus-cpp-core \
   -lz
+g++ -fsanitize=address -g -o ./bin/pcm-memory-exporter.out pcm-memory-exporter.cpp \
+  -I. \
+  -I./pcm/src \
+  ./pcm/build/src/libpcm.a \
+  -lprometheus-cpp-pull \
+  -lprometheus-cpp-core \
+  -lz
 # g++ -fsanitize=address -g -o ./bin/pcm-iio.out pcm-iio.cpp -I./pcm/src -L./pcm/build/lib -lpcm
 # g++ -fsanitize=address -g -o ./bin/print_pcm_env.out print_pcm_env.cpp -I./pcm/src -L./pcm/build/lib -lpcm
 

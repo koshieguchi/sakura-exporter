@@ -21,16 +21,19 @@ int mainThrows(int argc, char *argv[])
   if (print_version(argc, argv))
     exit(EXIT_SUCCESS);
 
-  // null_stream nullStream;
-  // check_and_set_silent(argc, argv, nullStream);
+  null_stream nullStream;
+  check_and_set_silent(argc, argv, nullStream);
+
+  std::cout << "\n Intel(r) Performance Counter Monitor " << PCM_VERSION << "\n";
+  std::cout << "\n This utility measures IIO information\n\n";
 
   string program = string(argv[0]);
 
   vector<struct iio_counter> counters;
-  // bool csv = false;
-  // bool human_readable = false;
-  // bool show_root_port = false;
-  // std::string csv_delimiter = ",";
+  bool csv = false;
+  bool human_readable = false;
+  bool show_root_port = false;
+  std::string csv_delimiter = ",";
   std::string output_file;
   double delay = PCM_DELAY_DEFAULT;
   bool list = false;
@@ -39,16 +42,67 @@ int mainThrows(int argc, char *argv[])
   // Map with metrics names.
   map<string, std::pair<h_id, std::map<string, v_id>>> nameMap;
 
+  while (argc > 1)
+  {
+    argv++;
+    argc--;
+    std::string arg_value;
+    if (check_argument_equals(*argv, {"--help", "-h", "/h"}))
+    {
+      print_usage(program);
+      exit(EXIT_FAILURE);
+    }
+    else if (check_argument_equals(*argv, {"-silent", "/silent"}))
+    {
+      // handled in check_and_set_silent
+      continue;
+    }
+    else if (extract_argument_value(*argv, {"-csv-delimiter", "/csv-delimiter"}, arg_value))
+    {
+      csv_delimiter = std::move(arg_value);
+    }
+    else if (check_argument_equals(*argv, {"-csv", "/csv"}))
+    {
+      csv = true;
+    }
+    else if (extract_argument_value(*argv, {"-csv", "/csv"}, arg_value))
+    {
+      csv = true;
+      output_file = std::move(arg_value);
+    }
+    else if (check_argument_equals(*argv, {"-human-readable", "/human-readable"}))
+    {
+      human_readable = true;
+    }
+    else if (check_argument_equals(*argv, {"-list", "--list"}))
+    {
+      list = true;
+    }
+    else if (check_argument_equals(*argv, {"-root-port", "/root-port"}))
+    {
+      show_root_port = true;
+    }
+    else if (mainLoop.parseArg(*argv))
+    {
+      continue;
+    }
+    else
+    {
+      delay = parse_delay(*argv, program, (print_usage_func)print_usage);
+      continue;
+    }
+  }
+
   set_signal_handlers();
 
-  // print_cpu_details();
+  print_cpu_details();
 
   PCM *m = PCM::getInstance();
 
   PCIDB pciDB;
   load_PCIDB(pciDB);
 
-  auto mapping = IPlatformMapping::getPlatformMapping(m->getCPUModel(), m->getNumSockets());
+  auto mapping = IPlatformMapping::getPlatformMapping(m->getCPUFamilyModel(), m->getNumSockets());
   if (!mapping)
   {
     cerr << "Failed to discover pci tree: unknown platform" << endl;
@@ -78,7 +132,7 @@ int mainThrows(int argc, char *argv[])
   string ev_file_name;
   if (m->IIOEventsAvailable())
   {
-    ev_file_name = "opCode-" + std::to_string(m->getCPUModel()) + ".txt";
+    ev_file_name = "opCode-" + std::to_string(m->getCPUFamily()) + "-" + std::to_string(m->getInternalCPUModel()) + ".txt";
   }
   else
   {
@@ -119,60 +173,19 @@ int mainThrows(int argc, char *argv[])
     exit(EXIT_FAILURE);
   }
 
+#ifdef PCM_DEBUG
+  print_nameMap(nameMap);
+#endif
+
   results.resize(m->getNumSockets(), stack_content(m->getMaxNumOfIIOStacks(), ctr_data()));
-
-  // Prometheus definition
-  // Create a Prometheus exporter
-  prometheus::Exposer exposer{"127.0.0.1:9403"};
-
-  // Create a metrics registry
-  auto registry = std::make_shared<prometheus::Registry>();
-
-  // Add the metrics registry to the exposer
-  exposer.RegisterCollectable(registry);
-
-  // Create gauge metrics for PCIe bandwidths
-  auto &pcm_iio_family = prometheus::BuildGauge()
-                             .Name("pcm_iio")
-                             .Help("PCM IIO in bytes per second")
-                             .Register(*registry);
-
-  // Add metrics to the registry
-  for (const auto &socket : iios)
-  {
-    for (const auto &stack : socket.stacks)
-    {
-      const uint32_t stack_id = stack.iio_unit_id;
-
-      for (const auto &ctr : evt_ctx.ctrs)
-      {
-        std::string metric_name = "socket" + std::to_string(socket.socket_id) + "_stack" + std::to_string(stack_id) + "_" + ctr.v_event_name;
-        pcm_iio_family.Add({{"socket", std::to_string(socket.socket_id)}, {"stack", std::to_string(stack_id)}, {"event", ctr.v_event_name}});
-      }
-    }
-  }
-
-  // Start the Prometheus exporter
-  std::cout << "\n------\n[INFO] Starting Prometheus exporter on port: 9403" << std::endl;
 
   mainLoop([&]()
            {
         collect_data(m, delay, iios, evt_ctx.ctrs);
-
-        // Update the Prometheus metrics
-        for (const auto &socket : iios)
-        {
-          for (const auto &stack : socket.stacks)
-          {
-            const uint32_t stack_id = stack.iio_unit_id;
-
-            for (const auto &ctr : evt_ctx.ctrs)
-            {
-              const uint64_t value = results[socket.socket_id][stack_id][std::pair<h_id, v_id>(ctr.h_id, ctr.v_id)];
-              pcm_iio_family.Add({{"socket", std::to_string(socket.socket_id)}, {"stack", std::to_string(stack_id)}, {"event", ctr.v_event_name}}).Set(value);
-            }
-          }
-        }
+        vector<string> display_buffer = csv ?
+            build_csv(iios, evt_ctx.ctrs, human_readable, show_root_port, csv_delimiter, nameMap) :
+            build_display(iios, evt_ctx.ctrs, pciDB, nameMap);
+        display(display_buffer, *output);
         return true; });
 
   file_stream.close();

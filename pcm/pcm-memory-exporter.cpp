@@ -12,6 +12,8 @@
 #include "utils.h"
 #include "pcm-memory-exporter.h"
 
+using namespace pcm;
+
 PCM_MAIN_NOTHROW;
 
 int mainThrows(int argc, char *argv[])

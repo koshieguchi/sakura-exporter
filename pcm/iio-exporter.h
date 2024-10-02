@@ -1,5 +1,17 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2017-2022, Intel Corporation
+
+// written by Patrick Lu,
+//            Aaron Cruz
+//            and others
 #include "cpucounters.h"
+
+#ifdef _MSC_VER
+#include <windows.h>
+#include "windows/windriver.h"
+#else
 #include <unistd.h>
+#endif
 
 #include <memory>
 #include <fstream>
@@ -10,6 +22,10 @@
 #include <numeric>
 #include <algorithm>
 #include <set>
+
+#ifdef _MSC_VER
+#include "freegetopt/getopt.h"
+#endif
 
 #include "lspci.h"
 #include "utils.h"
@@ -884,7 +900,7 @@ private:
 
 public:
     WhitleyPlatformMapping(int cpu_model, uint32_t sockets_count) : IPlatformMapping10Nm(cpu_model, sockets_count),
-                                                                    icx_d(PCM::getInstance()->getCPUModelFromCPUID() == PCM::ICX_D),
+                                                                    icx_d(PCM::getInstance()->getCPUFamilyModelFromCPUID() == PCM::ICX_D),
                                                                     sad_to_pmu_id_mapping(icx_d ? icx_d_sad_to_pmu_id_mapping : icx_sad_to_pmu_id_mapping),
                                                                     iio_stack_names(icx_d ? icx_d_iio_stack_names : icx_iio_stack_names)
     {
@@ -1820,21 +1836,22 @@ bool BirchStreamPlatform::pciTreeDiscover(std::vector<struct iio_stacks_on_socke
     return true;
 }
 
-std::unique_ptr<IPlatformMapping> IPlatformMapping::getPlatformMapping(int cpu_model, uint32_t sockets_count)
+std::unique_ptr<IPlatformMapping> IPlatformMapping::getPlatformMapping(int cpu_family_model, uint32_t sockets_count)
 {
-    switch (cpu_model)
+    switch (cpu_family_model)
     {
     case PCM::SKX:
-        return std::unique_ptr<IPlatformMapping>{new PurleyPlatformMapping(cpu_model, sockets_count)};
+        return std::unique_ptr<IPlatformMapping>{new PurleyPlatformMapping(cpu_family_model, sockets_count)};
     case PCM::ICX:
-        return std::unique_ptr<IPlatformMapping>{new WhitleyPlatformMapping(cpu_model, sockets_count)};
+        return std::unique_ptr<IPlatformMapping>{new WhitleyPlatformMapping(cpu_family_model, sockets_count)};
     case PCM::SNOWRIDGE:
-        return std::unique_ptr<IPlatformMapping>{new JacobsvillePlatformMapping(cpu_model, sockets_count)};
+        return std::unique_ptr<IPlatformMapping>{new JacobsvillePlatformMapping(cpu_family_model, sockets_count)};
     case PCM::SPR:
     case PCM::EMR:
-        return std::unique_ptr<IPlatformMapping>{new EagleStreamPlatformMapping(cpu_model, sockets_count)};
+        return std::unique_ptr<IPlatformMapping>{new EagleStreamPlatformMapping(cpu_family_model, sockets_count)};
     case PCM::SRF:
-        return std::unique_ptr<IPlatformMapping>{new BirchStreamPlatform(cpu_model, sockets_count)};
+    case PCM::GNR:
+        return std::unique_ptr<IPlatformMapping>{new BirchStreamPlatform(cpu_family_model, sockets_count)};
     default:
         return nullptr;
     }
@@ -1842,7 +1859,7 @@ std::unique_ptr<IPlatformMapping> IPlatformMapping::getPlatformMapping(int cpu_m
 
 ccr *get_ccr(PCM *m, uint64_t &ccr)
 {
-    switch (m->getCPUModel())
+    switch (m->getCPUFamilyModel())
     {
     case PCM::SKX:
         return new skx_ccr(ccr);
@@ -1851,6 +1868,7 @@ ccr *get_ccr(PCM *m, uint64_t &ccr)
     case PCM::SPR:
     case PCM::EMR:
     case PCM::SRF:
+    case PCM::GNR:
         return new icx_ccr(ccr);
     default:
         cerr << m->getCPUFamilyModelString() << " is not supported! Program aborted" << endl;
@@ -2018,3 +2036,206 @@ void print_PCIeMapping(const std::vector<struct iio_stacks_on_socket> &iios, con
     }
     display(buffer, stream);
 }
+
+void print_usage(const string &progname)
+{
+    cout << "\n Usage: \n " << progname << " --help | [interval] [options] \n";
+    cout << "   <interval>                           => time interval in seconds (floating point number is accepted)\n";
+    cout << "                                        to sample performance counters.\n";
+    cout << "                                        If not specified - 3.0 is used\n";
+    cout << " Supported <options> are: \n";
+    cout << "  -h    | --help  | /h               => print this help and exit\n";
+    cout << "  -silent                            => silence information output and print only measurements\n";
+    cout << "  --version                          => print application version\n";
+    cout << "  -csv[=file.csv] | /csv[=file.csv]  => output compact CSV format to screen or\n"
+         << "                                        to a file, in case filename is provided\n";
+    cout << "  -csv-delimiter=<value>  | /csv-delimiter=<value>   => set custom csv delimiter\n";
+    cout << "  -human-readable | /human-readable  => use human readable format for output (for csv only)\n";
+    cout << "  -root-port | /root-port            => add root port devices to output (for csv only)\n";
+    cout << "  -list | --list                     => provide platform topology info\n";
+    cout << "  -i[=number] | /i[=number]          => allow to determine number of iterations\n";
+    cout << " Examples:\n";
+    cout << "  " << progname << " 1.0 -i=10             => print counters every second 10 times and exit\n";
+    cout << "  " << progname << " 0.5 -csv=test.log     => twice a second save counter values to test.log in CSV format\n";
+    cout << "  " << progname << " -csv -human-readable  => every 3 second print counters in human-readable CSV format\n";
+    cout << "\n";
+}
+
+// PCM_MAIN_NOTHROW;
+
+// int mainThrows(int argc, char *argv[])
+// {
+//     if (print_version(argc, argv))
+//         exit(EXIT_SUCCESS);
+
+//     null_stream nullStream;
+//     check_and_set_silent(argc, argv, nullStream);
+
+//     std::cout << "\n Intel(r) Performance Counter Monitor " << PCM_VERSION << "\n";
+//     std::cout << "\n This utility measures IIO information\n\n";
+
+//     string program = string(argv[0]);
+
+//     vector<struct iio_counter> counters;
+//     bool csv = false;
+//     bool human_readable = false;
+//     bool show_root_port = false;
+//     std::string csv_delimiter = ",";
+//     std::string output_file;
+//     double delay = PCM_DELAY_DEFAULT;
+//     bool list = false;
+//     MainLoop mainLoop;
+//     iio_evt_parse_context evt_ctx;
+//     // Map with metrics names.
+//     map<string, std::pair<h_id, std::map<string, v_id>>> nameMap;
+
+//     while (argc > 1)
+//     {
+//         argv++;
+//         argc--;
+//         std::string arg_value;
+//         if (check_argument_equals(*argv, {"--help", "-h", "/h"}))
+//         {
+//             print_usage(program);
+//             exit(EXIT_FAILURE);
+//         }
+//         else if (check_argument_equals(*argv, {"-silent", "/silent"}))
+//         {
+//             // handled in check_and_set_silent
+//             continue;
+//         }
+//         else if (extract_argument_value(*argv, {"-csv-delimiter", "/csv-delimiter"}, arg_value))
+//         {
+//             csv_delimiter = std::move(arg_value);
+//         }
+//         else if (check_argument_equals(*argv, {"-csv", "/csv"}))
+//         {
+//             csv = true;
+//         }
+//         else if (extract_argument_value(*argv, {"-csv", "/csv"}, arg_value))
+//         {
+//             csv = true;
+//             output_file = std::move(arg_value);
+//         }
+//         else if (check_argument_equals(*argv, {"-human-readable", "/human-readable"}))
+//         {
+//             human_readable = true;
+//         }
+//         else if (check_argument_equals(*argv, {"-list", "--list"}))
+//         {
+//             list = true;
+//         }
+//         else if (check_argument_equals(*argv, {"-root-port", "/root-port"}))
+//         {
+//             show_root_port = true;
+//         }
+//         else if (mainLoop.parseArg(*argv))
+//         {
+//             continue;
+//         }
+//         else
+//         {
+//             delay = parse_delay(*argv, program, (print_usage_func)print_usage);
+//             continue;
+//         }
+//     }
+
+//     set_signal_handlers();
+
+//     print_cpu_details();
+
+//     PCM *m = PCM::getInstance();
+
+//     PCIDB pciDB;
+//     load_PCIDB(pciDB);
+
+//     auto mapping = IPlatformMapping::getPlatformMapping(m->getCPUFamilyModel(), m->getNumSockets());
+//     if (!mapping)
+//     {
+//         cerr << "Failed to discover pci tree: unknown platform" << endl;
+//         exit(EXIT_FAILURE);
+//     }
+
+//     std::vector<struct iio_stacks_on_socket> iios;
+//     if (!mapping->pciTreeDiscover(iios))
+//     {
+//         exit(EXIT_FAILURE);
+//     }
+
+//     std::ostream *output = &std::cout;
+//     std::fstream file_stream;
+//     if (!output_file.empty())
+//     {
+//         file_stream.open(output_file.c_str(), std::ios_base::out);
+//         output = &file_stream;
+//     }
+
+//     if (list)
+//     {
+//         print_PCIeMapping(iios, pciDB, *output);
+//         return 0;
+//     }
+
+//     string ev_file_name;
+//     if (m->IIOEventsAvailable())
+//     {
+//         ev_file_name = "opCode-" + std::to_string(m->getCPUFamily()) + "-" + std::to_string(m->getInternalCPUModel()) + ".txt";
+//     }
+//     else
+//     {
+//         cerr << "This CPU is not supported by PCM IIO tool! Program aborted\n";
+//         exit(EXIT_FAILURE);
+//     }
+
+//     map<string, uint32_t> opcodeFieldMap;
+//     opcodeFieldMap["opcode"] = PCM::OPCODE;
+//     opcodeFieldMap["ev_sel"] = PCM::EVENT_SELECT;
+//     opcodeFieldMap["umask"] = PCM::UMASK;
+//     opcodeFieldMap["reset"] = PCM::RESET;
+//     opcodeFieldMap["edge_det"] = PCM::EDGE_DET;
+//     opcodeFieldMap["ignored"] = PCM::IGNORED;
+//     opcodeFieldMap["overflow_enable"] = PCM::OVERFLOW_ENABLE;
+//     opcodeFieldMap["en"] = PCM::ENABLE;
+//     opcodeFieldMap["invert"] = PCM::INVERT;
+//     opcodeFieldMap["thresh"] = PCM::THRESH;
+//     opcodeFieldMap["ch_mask"] = PCM::CH_MASK;
+//     opcodeFieldMap["fc_mask"] = PCM::FC_MASK;
+//     opcodeFieldMap["hname"] = PCM::H_EVENT_NAME;
+//     opcodeFieldMap["vname"] = PCM::V_EVENT_NAME;
+//     opcodeFieldMap["multiplier"] = PCM::MULTIPLIER;
+//     opcodeFieldMap["divider"] = PCM::DIVIDER;
+//     opcodeFieldMap["ctr"] = PCM::COUNTER_INDEX;
+
+//     evt_ctx.m = m;
+//     evt_ctx.ctrs.clear(); // fill the ctrs by evt_handler call back func.
+
+//     try
+//     {
+//         load_events(ev_file_name, opcodeFieldMap, iio_evt_parse_handler, (void *)&evt_ctx, nameMap);
+//     }
+//     catch (std::exception &e)
+//     {
+//         std::cerr << "Error info:" << e.what() << "\n";
+//         std::cerr << "Event configure file have the problem and cause the program exit, please double check it!\n";
+//         exit(EXIT_FAILURE);
+//     }
+
+// #ifdef PCM_DEBUG
+//     print_nameMap(nameMap);
+// #endif
+
+//     results.resize(m->getNumSockets(), stack_content(m->getMaxNumOfIIOStacks(), ctr_data()));
+
+//     mainLoop([&]()
+//              {
+//         collect_data(m, delay, iios, evt_ctx.ctrs);
+//         vector<string> display_buffer = csv ?
+//             build_csv(iios, evt_ctx.ctrs, human_readable, show_root_port, csv_delimiter, nameMap) :
+//             build_display(iios, evt_ctx.ctrs, pciDB, nameMap);
+//         display(display_buffer, *output);
+//         return true; });
+
+//     file_stream.close();
+
+//     exit(EXIT_SUCCESS);
+// }
