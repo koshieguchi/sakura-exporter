@@ -1,347 +1,142 @@
+// pcm-memory-exporter.cpp
+// SPDX-License-Identifier: BSD-3-Clause
+// This code converts the CSV output to Prometheus exporter output.
+
 #include <iostream>
 #include <vector>
 #include <string>
-#include <map>
 #include <memory>
-#include <chrono>
-#include <thread>
+#include <csignal>
 #include <prometheus/exposer.h>
 #include <prometheus/registry.h>
 #include <prometheus/gauge.h>
+#include "pcm-memory-exporter.h"
 #include "cpucounters.h"
 #include "utils.h"
-#include "pcm-memory-exporter.h"
 
+using namespace std;
 using namespace pcm;
 
-PCM_MAIN_NOTHROW;
+volatile bool keepRunning = true;
 
-int mainThrows(int argc, char *argv[])
+void signalHandler(int signum)
 {
-  if (print_version(argc, argv))
-    exit(EXIT_SUCCESS);
+	keepRunning = false;
+}
 
-  null_stream nullStream2;
-#ifdef PCM_FORCE_SILENT
-  null_stream nullStream1;
-  cout.rdbuf(&nullStream1);
-  cerr.rdbuf(&nullStream2);
-#else
-  check_and_set_silent(argc, argv, nullStream2);
-#endif
+int main(int argc, char *argv[])
+{
+	// Set up signal handlers to gracefully handle termination
+	signal(SIGINT, signalHandler);
+	signal(SIGTERM, signalHandler);
 
-  set_signal_handlers();
+	// Print version information
+	cout << "\n Intel(r) Performance Counter Monitor " << PCM_VERSION << "\n";
+	cout << "\n This utility measures memory bandwidth and exports metrics via Prometheus\n\n";
 
-  cerr << "\n";
-  cerr << " Intel(r) Performance Counter Monitor: Memory Bandwidth Monitoring Utility " << PCM_VERSION << "\n";
-  cerr << "\n";
+	// Initialize PCM
+	PCM *m = PCM::getInstance();
+	if (m->program() != PCM::Success)
+	{
+		cerr << "PCM couldn't start. Please check if another instance of PCM is running.\n";
+		exit(EXIT_FAILURE);
+	}
 
-  cerr << " This utility measures memory bandwidth per channel or per DIMM rank in real-time\n";
-  cerr << "\n";
+	// Set up Prometheus Exposer
+	prometheus::Exposer exposer{"127.0.0.1:8080"};
+	auto registry = std::make_shared<prometheus::Registry>();
+	exposer.RegisterCollectable(registry);
 
-  double delay = -1.0;
-  bool csv = false, csvheader = false, show_channel_output = true, print_update = false;
-  uint32 no_columns = DEFAULT_DISPLAY_COLUMNS; // Default number of columns is 2
-  char *sysCmd = NULL;
-  char **sysArgv = NULL;
-  int rankA = -1, rankB = -1;
-  MainLoop mainLoop;
+	// Create Gauges for metrics
+	auto &memoryMetrics = prometheus::BuildGauge()
+							  .Name("pcm_memory_bandwidth_bytes")
+							  .Help("Memory bandwidth in bytes per second")
+							  .Register(*registry);
 
-  string program = string(argv[0]);
+	// System-level metrics
+	auto &systemReadBandwidth = memoryMetrics.Add({{"type", "read"}, {"level", "system"}});
+	auto &systemWriteBandwidth = memoryMetrics.Add({{"type", "write"}, {"level", "system"}});
+	auto &systemTotalBandwidth = memoryMetrics.Add({{"type", "total"}, {"level", "system"}});
 
-  PCM *m = PCM::getInstance();
-  assert(m);
-  if (m->getNumSockets() > max_sockets)
-  {
-    cerr << "Only systems with up to " << max_sockets << " sockets are supported! Program aborted\n";
-    exit(EXIT_FAILURE);
-  }
-  ServerUncoreMemoryMetrics metrics;
-  metrics = m->PMMTrafficMetricsAvailable() ? Pmem : PartialWrites;
+	// Per-socket metrics
+	std::vector<prometheus::Gauge *> socketReadBandwidth;
+	std::vector<prometheus::Gauge *> socketWriteBandwidth;
+	std::vector<prometheus::Gauge *> socketTotalBandwidth;
 
-  if (argc > 1)
-    do
-    {
-      argv++;
-      argc--;
-      string arg_value;
+	uint32 numSockets = m->getNumSockets();
+	for (uint32 i = 0; i < numSockets; ++i)
+	{
+		socketReadBandwidth.push_back(&memoryMetrics.Add({{"type", "read"}, {"level", "socket"}, {"socket", std::to_string(i)}}));
+		socketWriteBandwidth.push_back(&memoryMetrics.Add({{"type", "write"}, {"level", "socket"}, {"socket", std::to_string(i)}}));
+		socketTotalBandwidth.push_back(&memoryMetrics.Add({{"type", "total"}, {"level", "socket"}, {"socket", std::to_string(i)}}));
+	}
 
-      if (check_argument_equals(*argv, {"--help", "-h", "/h"}))
-      {
-        print_help(program);
-        exit(EXIT_FAILURE);
-      }
-      else if (check_argument_equals(*argv, {"-silent", "/silent"}))
-      {
-        // handled in check_and_set_silent
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"-csv", "/csv"}))
-      {
-        csv = csvheader = true;
-      }
-      else if (extract_argument_value(*argv, {"-csv", "/csv"}, arg_value))
-      {
-        csv = true;
-        csvheader = true;
-        if (!arg_value.empty())
-        {
-          m->setOutput(arg_value);
-        }
-        continue;
-      }
-      else if (mainLoop.parseArg(*argv))
-      {
-        continue;
-      }
-      else if (extract_argument_value(*argv, {"-columns", "/columns"}, arg_value))
-      {
-        if (arg_value.empty())
-        {
-          continue;
-        }
-        no_columns = stoi(arg_value);
-        if (no_columns == 0)
-          no_columns = DEFAULT_DISPLAY_COLUMNS;
-        if (no_columns > m->getNumSockets())
-          no_columns = m->getNumSockets();
-        continue;
-      }
-      else if (extract_argument_value(*argv, {"-rank", "/rank"}, arg_value))
-      {
-        if (arg_value.empty())
-        {
-          continue;
-        }
-        int rank = stoi(arg_value);
-        if (rankA >= 0 && rankB >= 0)
-        {
-          cerr << "At most two DIMM ranks can be monitored \n";
-          exit(EXIT_FAILURE);
-        }
-        else
-        {
-          if (rank > 7)
-          {
-            cerr << "Invalid rank number " << rank << "\n";
-            exit(EXIT_FAILURE);
-          }
-          if (rankA < 0)
-            rankA = rank;
-          else if (rankB < 0)
-            rankB = rank;
-          metrics = PartialWrites;
-        }
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"--nochannel", "/nc", "-nc"}))
-      {
-        show_channel_output = false;
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"-pmm", "/pmm", "-pmem", "/pmem"}))
-      {
-        metrics = Pmem;
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"-all", "/all"}))
-      {
-        skipInactiveChannels = false;
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"-mixed", "/mixed"}))
-      {
-        metrics = PmemMixedMode;
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"-mm", "/mm"}))
-      {
-        metrics = PmemMemoryMode;
-        show_channel_output = false;
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"-partial", "/partial"}))
-      {
-        metrics = PartialWrites;
-        continue;
-      }
-      else if (check_argument_equals(*argv, {"-u", "/u"}))
-      {
-        print_update = true;
-        continue;
-      }
-      PCM_ENFORCE_FLUSH_OPTION
-#ifdef _MSC_VER
-      else if (check_argument_equals(*argv, {"--uninstallDriver"}))
-      {
-        Driver tmpDrvObject;
-        tmpDrvObject.uninstall();
-        cerr << "msr.sys driver has been uninstalled. You might need to reboot the system to make this effective.\n";
-        exit(EXIT_SUCCESS);
-      }
-      else if (check_argument_equals(*argv, {"--installDriver"}))
-      {
-        Driver tmpDrvObject = Driver(Driver::msrLocalPath());
-        if (!tmpDrvObject.start())
-        {
-          tcerr << "Can not access CPU counters\n";
-          tcerr << "You must have a signed  driver at " << tmpDrvObject.driverPath() << " and have administrator rights to run this program\n";
-          exit(EXIT_FAILURE);
-        }
-        exit(EXIT_SUCCESS);
-      }
-#endif
-      else if (check_argument_equals(*argv, {"--"}))
-      {
-        argv++;
-        sysCmd = *argv;
-        sysArgv = argv;
-        break;
-      }
-      else
-      {
-        delay = parse_delay(*argv, program, (print_usage_func)print_help);
-        continue;
-      }
-    } while (argc > 1); // end of command line parsing loop
+	// Display a message indicating that monitoring has started
+	cout << "Starting memory bandwidth monitoring...\n";
 
-  m->disableJKTWorkaround();
-  print_cpu_details();
-  const auto cpu_family_model = m->getCPUFamilyModel();
-  if (!m->hasPCICFGUncore())
-  {
-    cerr << "Unsupported processor model (0x" << std::hex << cpu_family_model << std::dec << ").\n";
-    if (m->memoryTrafficMetricsAvailable())
-      cerr << "For processor-level memory bandwidth statistics please use 'pcm' utility\n";
-    exit(EXIT_FAILURE);
-  }
-  if (anyPmem(metrics) && (m->PMMTrafficMetricsAvailable() == false))
-  {
-    cerr << "PMM/Pmem traffic metrics are not available on your processor.\n";
-    exit(EXIT_FAILURE);
-  }
-  if (metrics == PmemMemoryMode && m->PMMMemoryModeMetricsAvailable() == false)
-  {
-    cerr << "PMM Memory Mode metrics are not available on your processor.\n";
-    exit(EXIT_FAILURE);
-  }
-  if (metrics == PmemMixedMode && m->PMMMixedModeMetricsAvailable() == false)
-  {
-    cerr << "PMM Mixed Mode metrics are not available on your processor.\n";
-    exit(EXIT_FAILURE);
-  }
-  if ((rankA >= 0 || rankB >= 0) && anyPmem(metrics))
-  {
-    cerr << "PMM/Pmem traffic metrics are not available on rank level\n";
-    exit(EXIT_FAILURE);
-  }
-  if ((rankA >= 0 || rankB >= 0) && !show_channel_output)
-  {
-    cerr << "Rank level output requires channel output\n";
-    exit(EXIT_FAILURE);
-  }
-  PCM::ErrorCode status = m->programServerUncoreMemoryMetrics(metrics, rankA, rankB);
-  m->checkError(status);
+	// Main data collection loop
+	const double delay = 1.0; // Sampling interval in seconds
 
-  max_imc_channels = (pcm::uint32)m->getMCChannelsPerSocket();
+	while (keepRunning)
+	{
+		// Collect counter states before the delay
+		SystemCounterState sysBeforeState = getSystemCounterState();
+		std::vector<SocketCounterState> sktBeforeState(numSockets);
+		for (uint32 i = 0; i < numSockets; ++i)
+		{
+			sktBeforeState[i] = getSocketCounterState(i);
+		}
 
-  std::vector<ServerUncoreCounterState> BeforeState(m->getNumSockets());
-  std::vector<ServerUncoreCounterState> AfterState(m->getNumSockets());
-  uint64 BeforeTime = 0, AfterTime = 0;
+		// Sleep for the specified delay
+		MySleepMs(static_cast<int>(delay * 1000));
 
-  if ((sysCmd != NULL) && (delay <= 0.0))
-  {
-    // in case external command is provided in command line, and
-    // delay either not provided (-1) or is zero
-    m->setBlocked(true);
-  }
-  else
-  {
-    m->setBlocked(false);
-  }
+		// Collect counter states after the delay
+		SystemCounterState sysAfterState = getSystemCounterState();
+		std::vector<SocketCounterState> sktAfterState(numSockets);
+		for (uint32 i = 0; i < numSockets; ++i)
+		{
+			sktAfterState[i] = getSocketCounterState(i);
+		}
 
-  if (csv)
-  {
-    if (delay <= 0.0)
-      delay = PCM_DELAY_DEFAULT;
-  }
-  else
-  {
-    // for non-CSV mode delay < 1.0 does not make a lot of practical sense:
-    // hard to read from the screen, or
-    // in case delay is not provided in command line => set default
-    if (((delay < 1.0) && (delay > 0.0)) || (delay <= 0.0))
-      delay = PCM_DELAY_DEFAULT;
-  }
+		// Calculate system-level bandwidth
+		double sysReadBandwidth = getBytesReadFromMC(sysBeforeState, sysAfterState) / delay;
+		double sysWriteBandwidth = getBytesWrittenToMC(sysBeforeState, sysAfterState) / delay;
+		double sysTotalBandwidth = sysReadBandwidth + sysWriteBandwidth;
 
-  shared_ptr<CHAEventCollector> chaEventCollector;
+		// Update system-level Prometheus metrics
+		systemReadBandwidth.Set(sysReadBandwidth);
+		systemWriteBandwidth.Set(sysWriteBandwidth);
+		systemTotalBandwidth.Set(sysTotalBandwidth);
 
-  SPR_CXL = (PCM::SPR == cpu_family_model || PCM::EMR == cpu_family_model) && (getNumCXLPorts(m) > 0);
-  if (SPR_CXL)
-  {
-    chaEventCollector = std::make_shared<CHAEventCollector>(delay, sysCmd, mainLoop, m);
-    assert(chaEventCollector.get());
-    chaEventCollector->programFirstGroup();
-  }
+		// Calculate and update per-socket bandwidth metrics
+		for (uint32 i = 0; i < numSockets; ++i)
+		{
+			double sktReadBandwidth = getBytesReadFromMC(sktBeforeState[i], sktAfterState[i]) / delay;
+			double sktWriteBandwidth = getBytesWrittenToMC(sktBeforeState[i], sktAfterState[i]) / delay;
+			double sktTotalBandwidth = sktReadBandwidth + sktWriteBandwidth;
 
-  cerr << "Update every " << delay << " seconds\n";
+			socketReadBandwidth[i]->Set(sktReadBandwidth);
+			socketWriteBandwidth[i]->Set(sktWriteBandwidth);
+			socketTotalBandwidth[i]->Set(sktTotalBandwidth);
+		}
 
-  if (csv)
-    cerr << "Read/Write values expressed in (MB/s)" << endl;
+		// Optionally, print the metrics to the console for verification
+		cout << fixed << setprecision(2);
+		cout << "System Read Bandwidth: " << sysReadBandwidth / (1024 * 1024) << " MB/sec" << endl;
+		cout << "System Write Bandwidth: " << sysWriteBandwidth / (1024 * 1024) << " MB/sec" << endl;
+		cout << "System Total Bandwidth: " << sysTotalBandwidth / (1024 * 1024) << " MB/sec" << endl;
 
-  readState(BeforeState);
+		for (uint32 i = 0; i < numSockets; ++i)
+		{
+			cout << "Socket " << i << " Read Bandwidth: " << socketReadBandwidth[i]->Value() / (1024 * 1024) << " MB/sec" << endl;
+			cout << "Socket " << i << " Write Bandwidth: " << socketWriteBandwidth[i]->Value() / (1024 * 1024) << " MB/sec" << endl;
+			cout << "Socket " << i << " Total Bandwidth: " << socketTotalBandwidth[i]->Value() / (1024 * 1024) << " MB/sec" << endl;
+		}
+		cout << endl;
+	}
 
-  uint64 SPR_CHA_CXL_Event_Count = 0;
+	// Clean up PCM resources
+	m->cleanup();
 
-  BeforeTime = m->getTickCount();
-
-  if (sysCmd != NULL)
-  {
-    MySystem(sysCmd, sysArgv);
-  }
-
-  mainLoop([&]()
-           {
-        if (enforceFlush || !csv) cout << flush;
-
-        if (chaEventCollector.get())
-        {
-            chaEventCollector->multiplexEvents(BeforeState);
-        }
-        else
-        {
-            calibratedSleep(delay, sysCmd, mainLoop, m);
-        }
-
-        AfterTime = m->getTickCount();
-        readState(AfterState);
-        if (chaEventCollector.get())
-        {
-            SPR_CHA_CXL_Event_Count = chaEventCollector->getTotalCount(AfterState);
-            chaEventCollector->reset();
-            chaEventCollector->programFirstGroup();
-            readState(AfterState); // TODO: re-read only CHA counters (performance optmization)
-        }
-
-        if (!csv) {
-          //cout << "Time elapsed: " << dec << fixed << AfterTime-BeforeTime << " ms\n";
-          //cout << "Called sleep function for " << dec << fixed << delay_ms << " ms\n";
-        }
-
-        if(rankA >= 0 || rankB >= 0)
-          calculate_bandwidth_rank(m,BeforeState, AfterState, AfterTime - BeforeTime, csv, csvheader, no_columns, rankA, rankB);
-        else
-          calculate_bandwidth(m,BeforeState,AfterState,AfterTime-BeforeTime,csv,csvheader, no_columns, metrics,
-                show_channel_output, print_update, SPR_CHA_CXL_Event_Count);
-
-        swap(BeforeTime, AfterTime);
-        swap(BeforeState, AfterState);
-
-        if ( m->isBlocked() ) {
-        // in case PCM was blocked after spawning child application: break monitoring loop here
-            return false;
-        }
-        return true; });
-
-  exit(EXIT_SUCCESS);
+	return 0;
 }
