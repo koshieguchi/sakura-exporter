@@ -33,14 +33,14 @@ wait
 
 mkdir -p ./bin
 
-# g++ -fsanitize=address -g -o ./bin/pcie-exporter.out pcie-exporter.cpp \
-#   -I. \
-#   -I./pcm/src \
-#   -L./pcm/build/lib \
-#   -lpcm \
-#   -lprometheus-cpp-pull \
-#   -lprometheus-cpp-core \
-#   -lz
+g++ -fsanitize=address -g -o ./bin/pcie-exporter.out pcie-exporter.cpp \
+  -I. \
+  -I./pcm/src \
+  -L./pcm/build/lib \
+  ./pcm/build/src/libpcm.a \
+  -lprometheus-cpp-pull \
+  -lprometheus-cpp-core \
+  -lz
 g++ -fsanitize=address -g -o ./bin/iio-exporter.out iio-exporter.cpp \
   -I. \
   -I./pcm/src \

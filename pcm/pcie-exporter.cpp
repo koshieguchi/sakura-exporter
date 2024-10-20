@@ -22,7 +22,7 @@ using namespace pcm;
 // Factory function
 IPlatform *IPlatform::getPlatform(PCM *m, bool csv, bool print_bandwidth, bool print_additional_info, uint32 delay)
 {
-  switch (m->getCPUModel())
+  switch (m->getCPUFamilyModel())
   {
   case PCM::SRF:
     std::cout << "Birch" << std::endl;
