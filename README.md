@@ -1,6 +1,6 @@
 ## Install
 
-**This repository can be built only on linux environment.**
+### Infiniband exporter
 
 ```bash
 # Build Mannually
@@ -17,7 +17,7 @@ bazel build //infiniband
 bazel run //infiniband
 ```
 
-新たにモジュールを追加した場合は、以下のコマンドを実行してください。
+If you add new dependencies, you need to update WORKSPACE file and run gazelle command.
 
 ```bash
 go get github.com/...
@@ -25,11 +25,28 @@ go mod tidy
 ```
 
 debug
+
 ```bash
 bazel info
 ```
 
+### PCM exporters
+
+```bash
+cd pcm
+sudo ./build.sh
+```
+
 ## Output
+
+| name                | port | endpoint | description             |
+| ------------------- | ---- | -------- | ----------------------- |
+| infiniband exporter | 9401 | /metrics | Infiniband Port Metrics |
+| pcm-pcie exporter   | 9402 | /metrics | PCM PCIe Metrics        |
+| pcm-iio exporter    | 9403 | /metrics | PCM IIO Metrics         |
+| pcm-memory exporter | 9404 | /metrics | PCM Memory Metrics      |
+
+You can check the metrics by accessing each endpoint. For example:
 
 ```sh
 $ curl localhost:9401/metrics
@@ -50,4 +67,5 @@ infiniband_port_transmit_packets_total{device="mlx5_bond_0",port="1"} 0
 ```
 
 ## Reference
-[Bazelを使ってみる その１（Goのビルド） - Carpe Diem](https://christina04.hatenablog.com/entry/using-bazel-to-build-go)
+
+- https://christina04.hatenablog.com/entry/using-bazel-to-build-go

@@ -9,6 +9,7 @@
 
   mkdir -p prometheus-cpp/_build
   cd prometheus-cpp/_build
+  git checkout 6492e820cdff7e7345d46d82b43735aaea542098
 
   cmake .. -DBUILD_SHARED_LIBS=OFF -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_BUILD_TYPE=Release # run cmake
   cmake --build . --parallel $(($(nproc)/2)) # build
@@ -23,6 +24,7 @@
 
   mkdir -p pcm/build
   cd pcm/build
+  git checkout a2ae365364cf5ab74752105391b0f3c1e3db1f18
 
   cmake ..
   cmake --build . --target PCM_STATIC --parallel $(($(nproc)/2)) # build
