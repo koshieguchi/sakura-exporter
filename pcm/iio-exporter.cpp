@@ -123,7 +123,7 @@ int mainThrows(int argc, char *argv[])
 
   // Prometheus definition
   // Create a Prometheus exporter
-  prometheus::Exposer exposer{"127.0.0.1:9403"};
+  prometheus::Exposer exposer{"0.0.0.0:9403"};
 
   // Create a metrics registry
   auto registry = std::make_shared<prometheus::Registry>();

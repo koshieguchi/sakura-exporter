@@ -36,7 +36,7 @@ int mainThrows(int argc, char *argv[])
 	uint32 numSockets = m->getNumSockets();
 
 	// Set up Prometheus Exposer
-	prometheus::Exposer exposer{"127.0.0.1:9404"};
+	prometheus::Exposer exposer{"0.0.0.0:9404"};
 
 	// Create a metrics registry
 	auto registry = std::make_shared<prometheus::Registry>();

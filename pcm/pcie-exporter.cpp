@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
   std::signal(SIGTERM, signalHandler);
 
   // Create a Prometheus exporter
-  prometheus::Exposer exposer{"127.0.0.1:9402"};
+  prometheus::Exposer exposer{"0.0.0.0:9402"};
 
   // Create a metrics registry
   auto registry = std::make_shared<prometheus::Registry>();
