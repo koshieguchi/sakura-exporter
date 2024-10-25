@@ -9,7 +9,6 @@
 
   mkdir -p prometheus-cpp/_build
   cd prometheus-cpp/_build
-  git checkout 6492e820cdff7e7345d46d82b43735aaea542098
 
   cmake .. -DBUILD_SHARED_LIBS=OFF -DENABLE_PUSH=OFF -DENABLE_COMPRESSION=OFF -DCMAKE_BUILD_TYPE=Release # run cmake
   cmake --build . --parallel $(($(nproc)/2)) # build
@@ -24,7 +23,6 @@
 
   mkdir -p pcm/build
   cd pcm/build
-  git checkout a2ae365364cf5ab74752105391b0f3c1e3db1f18
 
   cmake ..
   cmake --build . --target PCM_STATIC --parallel $(($(nproc)/2)) # build
@@ -35,30 +33,28 @@ wait
 
 mkdir -p ./bin
 
-g++ -fsanitize=address -g -o ./bin/pcie-exporter.out pcie-exporter.cpp \
+g++ -fsanitize=address -g -o ./bin/pcm-pcie-exporter.out pcie-exporter.cpp \
   -I. \
   -I./pcm/src \
-  -L./pcm/build/lib \
+  -L./pcm/build/src \
   ./pcm/build/src/libpcm.a \
-  -lprometheus-cpp-pull \
-  -lprometheus-cpp-core \
+  /usr/local/lib/libprometheus-cpp-pull.a \
+  /usr/local/lib/libprometheus-cpp-core.a \
   -lz
-g++ -fsanitize=address -g -o ./bin/iio-exporter.out iio-exporter.cpp \
+g++ -fsanitize=address -g -o ./bin/pcm-iio-exporter.out iio-exporter.cpp \
   -I. \
   -I./pcm/src \
   ./pcm/build/src/libpcm.a \
-  -lprometheus-cpp-pull \
-  -lprometheus-cpp-core \
+  /usr/local/lib/libprometheus-cpp-pull.a \
+  /usr/local/lib/libprometheus-cpp-core.a \
   -lz
 g++ -fsanitize=address -g -o ./bin/pcm-memory-exporter.out pcm-memory-exporter.cpp \
   -I. \
   -I./pcm/src \
   ./pcm/build/src/libpcm.a \
-  -lprometheus-cpp-pull \
-  -lprometheus-cpp-core \
+  /usr/local/lib/libprometheus-cpp-pull.a \
+  /usr/local/lib/libprometheus-cpp-core.a \
   -lz
-# g++ -fsanitize=address -g -o ./bin/pcm-iio.out pcm-iio.cpp -I./pcm/src -L./pcm/build/lib -lpcm
-# g++ -fsanitize=address -g -o ./bin/print_pcm_env.out print_pcm_env.cpp -I./pcm/src -L./pcm/build/lib -lpcm
 
 # sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/print_pcm_env.out
 # sudo env LD_LIBRARY_PATH=$(pwd)/pcm/build/lib:/usr/local/lib64:${LD_LIBRARY_PATH:-} ./bin/pcie-exporter.out
