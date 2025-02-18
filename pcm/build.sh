@@ -1,5 +1,7 @@
 #!/bin/bash -eux
 
+./clean.sh
+
 # fetch third-party dependencies
 (
   # Install prometheus-cpp
@@ -41,13 +43,13 @@ g++ -fsanitize=address -g -o ./bin/pcm-pcie-exporter.out pcie-exporter.cpp \
   /usr/local/lib/libprometheus-cpp-pull.a \
   /usr/local/lib/libprometheus-cpp-core.a \
   -lz
-g++ -fsanitize=address -g -o ./bin/pcm-iio-exporter.out iio-exporter.cpp \
-  -I. \
-  -I./pcm/src \
-  ./pcm/build/src/libpcm.a \
-  /usr/local/lib/libprometheus-cpp-pull.a \
-  /usr/local/lib/libprometheus-cpp-core.a \
-  -lz
+# g++ -fsanitize=address -g -o ./bin/pcm-iio-exporter.out iio-exporter.cpp \
+#   -I. \
+#   -I./pcm/src \
+#   ./pcm/build/src/libpcm.a \
+#   /usr/local/lib/libprometheus-cpp-pull.a \
+#   /usr/local/lib/libprometheus-cpp-core.a \
+#   -lz
 g++ -fsanitize=address -g -o ./bin/pcm-memory-exporter.out pcm-memory-exporter.cpp \
   -I. \
   -I./pcm/src \

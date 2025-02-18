@@ -7,3 +7,5 @@ pcm/pcm/
 pcm/prometheus-cpp/
 
 /.vscode
+
+infiniband-exporter

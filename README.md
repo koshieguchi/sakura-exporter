@@ -2,11 +2,21 @@
 
 ### Infiniband exporter
 
+**Install Go 1.22.3**
+
+```sh
+wget https://go.dev/dl/go1.22.3.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.22.3.linux-amd64.tar.gz
+echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+source ~/.bashrc
+go version
+```
+
 ```bash
 # Build Mannually
 go mod init github.com/koshieguchi/sakura-exporter/infiniband
 go get github.com/prometheus/procfs
-go build -o sakura-exporter main.go
+go build -o infiniband infiniband-exporter.go
 
 # Build with Bazel
 # Update WORKSPACE file based on go.mod
@@ -33,6 +43,7 @@ bazel info
 ### PCM exporters
 
 ```bash
+sudo apt install -y libasan8 cmake zlib1g-dev
 cd pcm
 sudo ./build.sh
 ```
