@@ -2,6 +2,9 @@
 
 ./clean.sh
 
+sudo apt update
+sudo apt install -y cmake libasan8 zlib1g-dev
+
 # fetch third-party dependencies
 (
   # Install prometheus-cpp
